@@ -20,7 +20,7 @@ Our goal is to identify all possible cis-NATs across the genome, create a compre
 <ol type="A">
   <li>Explore overlap attributes (follows script 1)</li>
   <li>Assess RNA-editing coverage/levels with current quantification (follows exScript A)</li>
-  <li>Select candidate dsRNAs with current quantification: some edQTLs, some not; some variable in editing, some variable in expression, some both (follows exScript B)(</li>
+  <li>Select candidate dsRNAs with current quantification: some edQTLs, some not; some variable in editing, some variable in expression, some both (follows exScript B)</li>
   <li>Explore editing/expression patterns of candidate dsRNAs (follows exScript C)</li>
 </ol>
 
