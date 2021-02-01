@@ -17,8 +17,11 @@ Our goal is to identify all possible cis-NATs across the genome, create a compre
 4. Filter overlaps to candidate dsRNAs that show inter-individual variability in either: RNA-editing level or expression level
 
 ## Exploratory/Experimental Code: ##
-A. Explore overlap attributes (follows script 1)
-B. Assess RNA-editing coverage/levels with current quantification (follows script 1, exScript A)
-C. Select candidate dsRNAs with current quantification: some edQTLs, some not; some variable in editing, some variable in expression, some both
-D. Explore editing/expression patterns of candidate dsRNAs
+<ol type="A">
+  <li>Explore overlap attributes (follows script 1)</li>
+  <li>Assess RNA-editing coverage/levels with current quantification (follows exScript A)</li>
+  <li>Select candidate dsRNAs with current quantification: some edQTLs, some not; some variable in editing, some variable in expression, some both (follows exScript B)(</li>
+  <li>Explore editing/expression patterns of candidate dsRNAs (follows exScript C)</li>
+</ol>
+
  
