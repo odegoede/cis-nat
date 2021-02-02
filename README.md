@@ -11,7 +11,7 @@ Many cis-NATs arise from the thousands of antisense lncRNA genes in the genome, 
 Our goal is to identify all possible cis-NATs across the genome, create a comprehensive list of cis-NATs that also have clusters of RNA editing. Since RNA editing of “self” RNA prevents MDA5 binding and the subsequent innate immune signaling, the presence of RNA editing clusters would mark the cis-NATs that could be immunogenic dsRNAs. Variation in editing of these cis-NATs could influence autoimmune disease risk; defining these relationships would add to our understanding of complex immune-related diseases.
 
 ## Analysis Steps: ##
-1. Identify all transcript overlaps using genome annotation
+1. Identify all transcript overlaps using genome annotation [01_find_tx_overlaps.R](https://github.com/odegoede/cis-nat/blob/main/find_overlapping_transcripts/01_find_tx_overlaps.R)
 2. Qin: re-map clusters of hyper-editing within these transcript overlaps - opportunity to improve approach
 3. With updated RNA-editing cluster IDs, quantify levels of editing (at cluster-level instead of site-level?)
 4. Filter overlaps to candidate dsRNAs that show inter-individual variability in either: RNA-editing level or expression level
