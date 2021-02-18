@@ -169,4 +169,17 @@ if (opt$keepanno %in% c("RData", "both")) {
 # have the exact same overlapping region
 
 
-# Save overlap files
+
+# TODO: check for overlap with known Alu sequences, add Alu flag field
+
+
+
+# Save overlap annotation file
+
+
+
+# Merge into simplified file of genomic locations of overlaps, for read mapping; save
+# (chr, start, end, Alu_flag)
+
+
+
