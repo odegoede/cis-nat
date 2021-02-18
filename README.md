@@ -60,9 +60,11 @@ n/a
 Intended to be run by project collaborators on Oak - no actual GTEx data will be put online.
 
 ### What will you test?
-1. Is there variation in expression or editing level of cis-NATs?
-2. Is this editing variation connected to genetic variants?
-3. Can we combine this expression/editing data across all dsRNAs to create a meaningful total immunogenic dsRNA score?
+TODO: incorporate R package [testthat](https://testthat.r-lib.org/) into code?
+- necessary files were provided
+- for a given script, the necessary directories exist
+- files behave as expected (e.g. GTF fields: seqname, source, feature, start, end, score, strand, frame, attribute; e.g. quant file fields: chrom, position, coverage, editedreads, editlevel)
+- sample annotation file has the colnames for sample name, tissue, and individual specified. if the sample name isn't the same as the quant file names, needs to also have a quant file name field. (I think this is necessary - depends on how the code for combining quant files shakes out, might instead name columns the same as the sample name field)
 
 ## Third Party dependencies
 - R libraries for:
