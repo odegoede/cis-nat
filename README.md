@@ -79,8 +79,6 @@ Intended to be run by project collaborators on Oak - no actual GTEx data will be
 ## Related Work?
 [Code related to original GTEx RNA editing quantifcation, for known editing sites](https://github.com/vargasliqin/mpileup)
 
-[temp_unzip code](https://gist.github.com/xhdong-umd/6429e7f96735142fa467f3b1daa91a2c))
-
 ## Progress / Analysis Steps:
 1. Identify all transcript overlaps using genome annotation: [01_find_tx_overlaps.R](https://github.com/odegoede/cis-nat/blob/main/find_overlapping_transcripts/01_find_tx_overlaps.R)
 2. Qin: re-map clusters of hyper-editing within these transcript overlaps - opportunity to improve approach
