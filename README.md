@@ -14,20 +14,15 @@ We still don't know the molecular mechanisms behind many disease-associated vari
 n/a
 
 ### Current Goals
-<ol>
-	<li>Annotate all possible overlapping transcripts. Flag ones that contain Alu repeats (if any).</li>
-	<li>Filter & combine each RNA editing quantification file (1 per sample, ~17k files) into one workable file.</li>
-	<li>Assess overall editing level and variation, both site-level and region-level.</li>
-	<li>Search for genetic variants associated with RNA editing (site-level and region-level)</li>
-	<li>Test out calculating a "total immunogenic dsRNA score"; consistency within individual across tissues? applicable to external cohorts with immune trait information and RNA-seq data? (TODO: may need to bring in RNA editing quantification from IRAlus as well)</li>
-</ol>
+- Annotate all possible overlapping transcripts. Flag ones that contain Alu repeats (if any).
+- Filter & combine each RNA editing quantification file (1 per sample, ~17k files) into one workable file.
+- Assess overall editing level and variation, both site-level and region-level.
+- Search for genetic variants associated with RNA editing (site-level and region-level)
+- Test out calculating a "total immunogenic dsRNA score"; consistency within individual across tissues? applicable to external cohorts with immune trait information and RNA-seq data? (TODO: may need to bring in RNA editing quantification from IRAlus as well)
 
 
 ### Non-Goals
-<ol>
-	<li>Does not incorporate the steps of RNA-seq read mapping, or quantification of RNA editing level per site.</li>
-	<li>Currently not intending this to be a pipeline that anyone unaffiliated with the project could run.</li>
-</ol>
+Will not incorporate the steps of RNA-seq read mapping, or quantification of RNA editing level per site. Also currently not intending this to be a pipeline that anyone unaffiliated with the project could run.
 
 ### Future goals
 Connect to Qin's code for read mapping and RNA editing quantification, and build a start-to-finish pipeline (from raw RNA-seq data --> dsRNA-level editing scores --> identifying variation in editing --> testing for association with genetic variation --> testing for association with immune traits --> total immunogenic burden score?)
@@ -36,11 +31,10 @@ Connect to Qin's code for read mapping and RNA editing quantification, and build
 ## Detailed Design
 ### User requirements
 Required inputs:
-<ol>
-	<li>Gene annotation file (or a link to one); assuming GTF type</li>
-	<li>Sample information file; must have sample ID field that can be matched to RNA editing quantification file names, and at least fields for tissue and individual</li>
-	<li>(Path to directory of) RNA editing quantification files (1/sample); columns: chrom, position, coverage, editedreads, editlevel</li>
-</ol>
+- Gene annotation file (or a link to one); assuming GTF type
+- Sample information file; must have sample ID field that can be matched to RNA editing quantification file names, and at least fields for tissue and individual
+- (Path to directory of) RNA editing quantification files (1/sample); columns: chrom, position, coverage, editedreads, editlevel
+
 For current goals, users are assumed to be people affiliated with the project (myself & Qin), or the readers of an eventual paper about this project (for code transparency, not intended for their use).
 
 ### New/changed data structures?
@@ -55,11 +49,9 @@ n/a
 n/a
 
 ### Data validation/what are potential error states?
-<ol>
-	<li>Gene annotation file needs to have transcripts on opposite strands that overlap</li>
-	<li>Sample information file needs to have sample IDs that can be matched to RNA editing quantification file names, and fields for tissue and individual</li>
-	<li>RNA editing quantification files should at least have columns for: chrom, position, coverage, and editedreads (editlevel can be easily calculated); ideally, all quant files will have the same number of rows (i.e. be providing data for the same number of sites) - if not, this should be filled in with NAs so we don't get file sorting/filtering errors</li>
-</ol>
+- Gene annotation file needs to have transcripts on opposite strands that overlap
+- Sample information file needs to have sample IDs that can be matched to RNA editing quantification file names, and fields for tissue and individual
+- RNA editing quantification files should at least have columns for: chrom, position, coverage, and editedreads (editlevel can be easily calculated); ideally, all quant files will have the same number of rows (i.e. be providing data for the same number of sites) - if not, this should be filled in with NAs so we don't get file sorting/filtering errors
 
 ### Logging/monitoring/observability
 n/a
@@ -73,9 +65,11 @@ Intended to be run by project collaborators on Oak - no actual GTEx data will be
 3. Can we combine this expression/editing data across all dsRNAs to create a meaningful total immunogenic dsRNA score?
 
 ## Third Party dependencies
-<ol>
-	<li>R libraries for plotting (ggplot2, patchwork); reading in data (data.table + [temp_unzip code](https://gist.github.com/xhdong-umd/6429e7f96735142fa467f3b1daa91a2c)); </li>
-	<li>FastQTL</li>
+- R libraries for:
+  - plotting (ggplot2, patchwork)
+  - reading in data (data.table & [temp_unzip code](https://gist.github.com/xhdong-umd/6429e7f96735142fa467f3b1daa91a2c))
+  - finding overlaps (GenomicRanges)
+- FastQTL
 
 
 ## Work Estimates
@@ -85,7 +79,7 @@ Intended to be run by project collaborators on Oak - no actual GTEx data will be
 ## Related Work?
 [Code related to original GTEx RNA editing quantifcation, for known editing sites](https://github.com/vargasliqin/mpileup)
 
-
+[temp_unzip code](https://gist.github.com/xhdong-umd/6429e7f96735142fa467f3b1daa91a2c))
 
 ## Progress / Analysis Steps:
 1. Identify all transcript overlaps using genome annotation: [01_find_tx_overlaps.R](https://github.com/odegoede/cis-nat/blob/main/find_overlapping_transcripts/01_find_tx_overlaps.R)
