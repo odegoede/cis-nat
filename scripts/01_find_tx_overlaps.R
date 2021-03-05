@@ -8,6 +8,7 @@
 
 ####
 ## SET OPTIONS, LOAD LIBRARIES
+# renv::restore() # had problems installing BioConductor packages
 options(stringsAsFactors = F)
 suppressPackageStartupMessages(require(optparse))
 suppressPackageStartupMessages(require(dplyr))
@@ -27,7 +28,7 @@ option_list <- list(
   make_option("--scratchdir", default = NULL, 
               help = "Where should intermediate files be saved? If kept as NULL, intermediate files won't be saved. [default \"%default\"]"),
   make_option("--keepanno", default = "neither", 
-              help = "Should the gene, transcript, and exon annotations be saved? Files will be saved to outdir. \"text\" for .txt files, \"RData\" for .RData, \"both\" for both .txt and .RData files. Anything else will be interpreted as \"neither\". [default %default]")
+              help = "Should the gene, transcript, and exon annotations be saved? Files will be saved to outdir. \"text\" for .txt files, \"RData\" for .RData, \"both\" for both .txt and .RData files. Anything else will be interpreted as \"neither\". [default \"%default\"]")
 )
 
 # get command line options; if help option encountered, print help and exit;
@@ -205,8 +206,6 @@ if (!is.null(opt$scratchdir)) {
 
 ####
 ## Load source scripts
-print(file.path(script_dir, "source_temp_unzip.R"))
-file.exists(file.path(script_dir, "source_temp_unzip.R"))
 source(file.path(script_dir, "source_temp_unzip.R"))
 source(file.path(script_dir, "source_gtf_reader.R"))
 
