@@ -462,11 +462,11 @@ tx_pair_dat["ENST00000355772.8__ENST00000396799.3", ]$longest_overlap_end <- pas
 # duplicate_overlap field: marks overlaps involving alternative transcripts of the same gene that 
 # have the exact same overlapping region
 tx_pair_dat$overlap_id <- paste(paste(tx_pair_dat$minus_gene, tx_pair_dat$plus_gene, sep = "_"),
-                                as.character(apply(tx_pair_dat[,c("minus_exons_in_overlap", "plus_exons_in_overlap", "longest_overlap_width")], 1, paste, collapse = ";")), sep = "__")
+                                as.character(apply(tx_pair_dat[,c("longest_overlap_start", "longest_overlap_end", "longest_overlap_width")], 1, paste, collapse = ";")), sep = "__")
 tx_pair_dat$duplicate_overlap <- FALSE
 duplicate_ids <- tx_pair_dat[duplicated(tx_pair_dat$overlap_id), ]$overlap_id
 tx_pair_dat[tx_pair_dat$overlap_id %in% duplicate_ids, ]$duplicate_overlap <- TRUE
-summary(tx_pair_dat$duplicate_overlap) # 10,219 unique overlaps; 5,877 overlaps represent the same gene pair and overlapping region
+summary(tx_pair_dat$duplicate_overlap) # 6,174 unique overlaps; 9,922 overlaps represent the same gene pair and overlapping region
 # save these intermediate files if scratchdir was provided
 if (exists("scratch_dir")) {
   save(tx_pair_dat, file = file.path(scratch_dir, "01_full_transcript_overlap_table.RData"))
@@ -479,7 +479,7 @@ if (exists("scratch_dir")) {
 # this filters to just unique overlap regions
 # (but note: the same gene pair is still often represented multiple times, e.g. if alternative transcripts
 # have slightly different overlap ranges)
-unique_overlaps <- tx_pair_dat[tx_pair_dat$duplicate_overlap == F, ]
+unique_overlaps <- tx_pair_dat[tx_pair_dat$duplicate_overlap == FALSE, ]
 
 # how to filter?
 # 1. based on stronger TSL score
@@ -498,12 +498,12 @@ to_filter$plus_tsl <- factor(tx_anno[to_filter$plus_tx, ]$tsl, levels = tsl_prio
 to_filter$minus_tx_type <- factor(to_filter$minus_tx_type, levels = tx_priority, ordered = T) # min is best (protein-coding), max is worst (TEC)
 to_filter$plus_tx_type <- factor(to_filter$plus_tx_type, levels = tx_priority, ordered = T)
 
-dup_ids <- unique(to_filter$overlap_id)
+dup_ids <- unique(to_filter$overlap_id) # 3,011 rows from these 9,922 rows
 keep_ids <- as.character(sapply(dup_ids, choose_which_dup, df = to_filter))
 to_keep <- to_filter[keep_ids, colnames(unique_overlaps)]
-dim(to_keep) # 2,254 overlaps
+dim(to_keep) # 3,011 overlaps
 
-putative_cisnat <- rbind(unique_overlaps, to_keep)
+putative_cisnat <- rbind(unique_overlaps, to_keep) # 9,185 rows
 putative_cisnat <- putative_cisnat[,-c(grep("duplicate_overlap", colnames(putative_cisnat)),
                                        grep("overlap_id", colnames(putative_cisnat)))]
 
