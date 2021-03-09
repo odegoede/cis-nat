@@ -2,7 +2,7 @@
 
 Our goal is to identify all possible overlapping transcripts (cis-natural antisense transcripts, or cis-NATs) across the genome, then build a comprehensive list of cis-NATs that also have clusters of RNA editing. Since RNA editing of “self” RNA prevents MDA5 binding and the subsequent innate immune signaling, the presence of RNA editing clusters will mark cis-NATs that could be immunogenic dsRNAs. Variation in editing of these cis-NATs could influence autoimmune disease risk; defining these relationships would add to our understanding of complex immune-related diseases.
 
-The project's design document is [here]().
+The project's design document is [here](https://github.com/odegoede/cis-nat/blob/main/design.md).
 
 ## Walkthrough for code so far:
 

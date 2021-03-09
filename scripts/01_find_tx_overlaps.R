@@ -21,7 +21,7 @@ suppressPackageStartupMessages(library(data.table))
 option_list <- list( 
   make_option("--gtf", default = NULL, 
               help = "GTF file [default \"%default\"]"),
-  make_option("--outdir", default = ".", 
+  make_option("--outdir", default = "./output", 
               help = "Output directory to write transcript overlaps to [default is current working directory]"),
   make_option("--scriptdir", default = "./scripts",
               help = "Scripts directory (to load functions saved in source scripts). [default assumes running from repo, scripts are in \"%default\"]"),
@@ -176,7 +176,7 @@ choose_which_dup <- function(df = to_filter, overlap_id) {
 
 
 ####
-## Basic first tests of inputs
+## INPUT TESTS
 # Check the required arguments (GTF file) is provided
 if (is.null(opt$gtf)) { 
   stop("GTF file not provided, exiting\n") 
@@ -205,14 +205,14 @@ if (!is.null(opt$scratchdir)) {
 
 
 ####
-## Load source scripts
+## LOAD SOURCE SCRIPTS
 source(file.path(script_dir, "source_temp_unzip.R"))
 source(file.path(script_dir, "source_gtf_reader.R"))
 
 
 
 ####
-## Read in and organize GTF
+## READ IN INPUT FILES
 gtf_anno <- read_gtf(filename = opt$gtf)
 
 # Remove unnecessary columns and mitochondrial chromosome
@@ -409,6 +409,8 @@ exon_anno[exon_anno$tx_id == "ENST00000599229.2", ]
 # all five exons with overlap are shared-boundary ones (are consecutive exon number and the intermediate exons' starts and ends are the same), can just sum their overlap_width
 tx_pair_dat["ENST00000599229.2__ENST00000382100.8", ]$multi_exon_overlap <- TRUE
 tx_pair_dat["ENST00000599229.2__ENST00000382100.8", ]$longest_overlap_width <- sum(overlap_df[overlap_df$tx_pair == "ENST00000599229.2__ENST00000382100.8", ]$overlap_width)
+tx_pair_dat["ENST00000599229.2__ENST00000382100.8", ]$longest_overlap_start <- paste(overlap_df[overlap_df$tx_pair == "ENST00000599229.2__ENST00000382100.8", ]$overlap_start, collapse = ",")
+tx_pair_dat["ENST00000599229.2__ENST00000382100.8", ]$longest_overlap_end <- paste(overlap_df[overlap_df$tx_pair == "ENST00000599229.2__ENST00000382100.8", ]$overlap_end, collapse = ",")
 
 ## "ENST00000599229.2__ENST00000382099.2"
 overlap_df[overlap_df$tx_pair == "ENST00000599229.2__ENST00000382099.2", ]
@@ -418,6 +420,8 @@ exon_anno[exon_anno$tx_id == "ENST00000599229.2", ]
 # all five exons with overlap are shared-boundary ones (are consecutive exon number and the intermediate exons' starts and ends are the same), can just sum their overlap_width
 tx_pair_dat["ENST00000599229.2__ENST00000382099.2", ]$multi_exon_overlap <- TRUE
 tx_pair_dat["ENST00000599229.2__ENST00000382099.2", ]$longest_overlap_width <- sum(overlap_df[overlap_df$tx_pair == "ENST00000599229.2__ENST00000382099.2", ]$overlap_width)
+tx_pair_dat["ENST00000599229.2__ENST00000382099.2", ]$longest_overlap_start <- paste(overlap_df[overlap_df$tx_pair == "ENST00000599229.2__ENST00000382099.2", ]$overlap_start, collapse = ",")
+tx_pair_dat["ENST00000599229.2__ENST00000382099.2", ]$longest_overlap_end <- paste(overlap_df[overlap_df$tx_pair == "ENST00000599229.2__ENST00000382099.2", ]$overlap_end, collapse = ",")
 
 ## "ENST00000319770.7__ENST00000396799.3"
 overlap_df[overlap_df$tx_pair == "ENST00000319770.7__ENST00000396799.3", ]
@@ -427,6 +431,8 @@ exon_anno[exon_anno$tx_id == "ENST00000396799.3", ]
 # the only two exons with overlap are the shared-boundary ones, can just sum their overlap_width
 tx_pair_dat["ENST00000319770.7__ENST00000396799.3", ]$multi_exon_overlap <- TRUE
 tx_pair_dat["ENST00000319770.7__ENST00000396799.3", ]$longest_overlap_width <- sum(overlap_df[overlap_df$tx_pair == "ENST00000319770.7__ENST00000396799.3", ]$overlap_width)
+tx_pair_dat["ENST00000319770.7__ENST00000396799.3", ]$longest_overlap_start <- paste(overlap_df[overlap_df$tx_pair == "ENST00000319770.7__ENST00000396799.3", ]$overlap_start, collapse = ",")
+tx_pair_dat["ENST00000319770.7__ENST00000396799.3", ]$longest_overlap_end <- paste(overlap_df[overlap_df$tx_pair == "ENST00000319770.7__ENST00000396799.3", ]$overlap_end, collapse = ",")
 
 ## "ENST00000396801.7__ENST00000396799.3"
 overlap_df[overlap_df$tx_pair == "ENST00000396801.7__ENST00000396799.3", ]
@@ -436,6 +442,8 @@ exon_anno[exon_anno$tx_id == "ENST00000396801.7", ]
 # the only two exons with overlap are the shared-boundary ones, can just sum their overlap_width
 tx_pair_dat["ENST00000396801.7__ENST00000396799.3", ]$multi_exon_overlap <- TRUE
 tx_pair_dat["ENST00000396801.7__ENST00000396799.3", ]$longest_overlap_width <- sum(overlap_df[overlap_df$tx_pair == "ENST00000396801.7__ENST00000396799.3", ]$overlap_width)
+tx_pair_dat["ENST00000396801.7__ENST00000396799.3", ]$longest_overlap_start <- paste(overlap_df[overlap_df$tx_pair == "ENST00000396801.7__ENST00000396799.3", ]$overlap_start, collapse = ",")
+tx_pair_dat["ENST00000396801.7__ENST00000396799.3", ]$longest_overlap_end <- paste(overlap_df[overlap_df$tx_pair == "ENST00000396801.7__ENST00000396799.3", ]$overlap_end, collapse = ",")
 
 ## "ENST00000355772.8__ENST00000396799.3"
 overlap_df[overlap_df$tx_pair == "ENST00000355772.8__ENST00000396799.3", ]
@@ -445,6 +453,8 @@ exon_anno[exon_anno$tx_id == "ENST00000355772.8", ]
 # the only two exons with overlap are the shared-boundary ones, can just sum their overlap_width
 tx_pair_dat["ENST00000355772.8__ENST00000396799.3", ]$multi_exon_overlap <- TRUE
 tx_pair_dat["ENST00000355772.8__ENST00000396799.3", ]$longest_overlap_width <- sum(overlap_df[overlap_df$tx_pair == "ENST00000355772.8__ENST00000396799.3", ]$overlap_width)
+tx_pair_dat["ENST00000355772.8__ENST00000396799.3", ]$longest_overlap_start <- paste(overlap_df[overlap_df$tx_pair == "ENST00000355772.8__ENST00000396799.3", ]$overlap_start, collapse = ",")
+tx_pair_dat["ENST00000355772.8__ENST00000396799.3", ]$longest_overlap_end <- paste(overlap_df[overlap_df$tx_pair == "ENST00000355772.8__ENST00000396799.3", ]$overlap_end, collapse = ",")
 
 
 
@@ -464,7 +474,7 @@ if (exists("scratch_dir")) {
 
 
 
-## Step 8: get final set of overlaps, filtering down to unique overlap regions
+## Step 8: filter down to unique overlap regions
 # some tx_pairs are alternative transcripts of genes that have the exact same overlap
 # this filters to just unique overlap regions
 # (but note: the same gene pair is still often represented multiple times, e.g. if alternative transcripts
@@ -499,25 +509,10 @@ putative_cisnat <- putative_cisnat[,-c(grep("duplicate_overlap", colnames(putati
 
 
 
-## Step 9: add Alu flag field that indicates if an overlap region includes known inverted Alu sequences
-# (ADD NOTES FROM QIN!)
-
-
-
-
-
 ####
 ## Save overlap annotation file
 save(putative_cisnat, file = file.path(out_dir, "01_putative_cisNAT_uniqueRegionsOnly.RData"))
 write.table(putative_cisnat, file = file.path(out_dir, "01_putative_cisNAT_uniqueRegionsOnly.txt"),
             quote = F, sep = "\t", col.names = T, row.names = F)
-
-
-
-####
-## Merge into simplified file of genomic locations of any overlapping regions
-# (to identify priority regions for read alignment)
-# fields: chr, start, end, Alu_flag
-
 
 
