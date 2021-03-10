@@ -8,7 +8,6 @@
 
 ####
 ## SET OPTIONS, LOAD LIBRARIES
-# renv::restore() # had problems installing BioConductor packages
 options(stringsAsFactors = F)
 suppressPackageStartupMessages(require(optparse))
 suppressPackageStartupMessages(require(dplyr))
@@ -22,7 +21,7 @@ option_list <- list(
   make_option("--gtf", default = NULL, 
               help = "GTF file [default \"%default\"]"),
   make_option("--outdir", default = "./output", 
-              help = "Output directory to write transcript overlaps to [default is current working directory]"),
+              help = "Output directory to write transcript overlaps to [default is \"%default\"]"),
   make_option("--scriptdir", default = "./scripts",
               help = "Scripts directory (to load functions saved in source scripts). [default assumes running from repo, scripts are in \"%default\"]"),
   make_option("--scratchdir", default = NULL, 

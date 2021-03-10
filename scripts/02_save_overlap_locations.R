@@ -8,7 +8,6 @@
 
 ####
 ## SET OPTIONS, LOAD LIBRARIES
-# renv::restore() # had problems installing BioConductor packages
 options(stringsAsFactors = F)
 suppressPackageStartupMessages(require(optparse))
 suppressPackageStartupMessages(require(dplyr))
