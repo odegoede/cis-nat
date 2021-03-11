@@ -248,33 +248,6 @@ ggsave(g, file = file.path(fig_dir, "04_05_number_overlaps_by_chromosome_v2propo
 ggsave(g, file = file.path(fig_dir, "04_05_number_overlaps_by_chromosome_v2proportion.pdf"), width = 10, height = 6)
 
 
-
-####
-## Optional checks: How many are in the RNA-editing paper list of immunogenic dsRNAs with colocalizations? 
-## How many RNA-editing paper ones aren't in your list?
-if (!is.null(opt$edittable)) {
-  coloc_cisnat <- as.data.frame(readxl::read_xlsx(file.path(opt$edittable)))
-  paper_set <- unique(coloc_cisnat$`cis-NATs`)
-  paper_genes <- unique(unlist(strsplit(paper_set, ",")))
-  summary(paper_genes %in% unique(gene_anno$symbol))
-  # ^ 59 immunogenic dsRNA genes are in my gencode annotation, 4 aren't
-  temp <- paper_genes[!(paper_genes %in% unique(gene_anno$symbol))]
-  # missing: C5orf56, FAM69A, AHSA2, LINC00094
-  # online search (manual): C5orf56 = IRF1-AS1, FAM69A = DIPK1A, AHSA2 = ENSG00000173209, LINC00094 = BRD3OS
-  c("IRF1-AS1", "DIPK1A", "BRD3OS") %in% unique(gene_anno$symbol) # all are
-  gene_anno[grepl("ENSG00000173209", gene_anno$ensgene), ] # AHSA2 = AHSA2P
-  paper_genes <- gsub("C5orf56", "IRF1-AS1", gsub("FAM69A", "DIPK1A", gsub("LINC00094", "BRD3OS", gsub("AHSA2", "AHSA2P", paper_genes))))
-  summary(paper_genes %in% gene_anno$symbol) # all 63 are
-  summary(paper_genes %in% c(unique(putative_cisnat$minus_symbol), unique(putative_cisnat$plus_symbol)))
-  # 46 paper-identified immunogenic dsRNA genes are present in my list of possible cis-NATs, 17 are not
-  shared_cisnat <- paper_genes[(paper_genes %in% c(unique(putative_cisnat$minus_symbol), unique(putative_cisnat$plus_symbol)))]
-  not_found <- paper_genes[!(paper_genes %in% c(unique(putative_cisnat$minus_symbol), unique(putative_cisnat$plus_symbol)))]
-  out_df <- data.frame(editPaper_dsrna_gene = c(shared_cisnat, not_found), 
-                       in_putative_cisnat_table = c(rep(TRUE, length(shared_cisnat)), rep(FALSE, length(not_found))))
-  # write.table # (once moved to script 05)
-}
-
-
 ####
 ## Optional checks: How many of these possible cis-NATs overlap with my previously identified trait-relevant lncRNAs? (from GTEx colocalization)
 # just summary of how many - will go into detail on these in another script
