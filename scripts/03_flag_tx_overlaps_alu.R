@@ -6,6 +6,10 @@
 ## By: Olivia de Goede, 2021
 #####
 
+# example usage:
+# Rscript scripts/03_flag_tx_overlaps_alu.R --overlap output/01_putative_cisNAT_uniqueRegionsOnly.RData --alufile data/hg38_repeats.Alu.bed.gz --outdir output/ --scriptdir scripts/
+
+
 # if an overlapping transcript also contains part of an inverted-repeat Alu, we will need to dive into 
 # it to figure out if RNA editing is on the cis-NAT dsRNA (from the overlapping transcripts), or the 
 # IRAlu dsRNA. A reasonable first check would be, is expression of both tx required for editing?
@@ -31,9 +35,9 @@ option_list <- list(
   make_option("--alufile", default = NULL,
               help = "File with genomic annotation of Alu regions [default \"%default\"]"),
   make_option("--outdir", default = "./output", 
-              help = "Output directory to write transcript overlaps to [default \"%default\"]"),
+              help = "Output directory to write transcript overlaps to [default is \"%default\"]"),
   make_option("--scriptdir", default = "./scripts",
-              help = "Scripts directory (to load functions saved in source scripts). [default assumes running from repo, scripts are in \"%default\"]")
+              help = "Scripts directory (to load functions saved in source scripts). [default is \"%default\"]")
 )
 
 # get command line options; if help option encountered, print help and exit;
@@ -158,7 +162,7 @@ for (i in c(1:round(length(hit_vals)/n_at_a_time))) {
   }
   query_vals <- hit_vals[start_ind:end_ind]
   temp <- group_by(alu_overlaps_df[alu_overlaps_df$queryHits %in% query_vals, ], queryHits) %>%
-    group_map(combine_alus, alus_df = alu_locs) %>% reduce(rbind)
+    group_map(combine_alus, alus_df = alu_locs) %>% purrr::reduce(rbind)
   if (i > 1) {
     collapsed_alus <- rbind(collapsed_alus, temp)
   }
@@ -194,7 +198,7 @@ iralu_gr <- makeGRangesFromDataFrame(alus_with_overlap, seqnames.field = "chr")
 # (strand does not matter, since the overlapping regions include both strands)
 cisnat_alu_overlap <- as.data.frame(findOverlaps(cisnat_gr, iralu_gr, ignore.strand = T))
 collapsed_overlaps <- group_by(cisnat_alu_overlap, queryHits) %>%
-  group_map(combine_alus, alus_df = alus_with_overlap) %>% reduce(rbind)
+  group_map(combine_alus, alus_df = alus_with_overlap) %>% purrr::reduce(rbind)
 putative_cisnat$alu_overlap <- NA
 putative_cisnat[collapsed_overlaps$row_number, ]$alu_overlap <- collapsed_overlaps$alus
 

@@ -6,6 +6,10 @@
 ## By: Olivia de Goede, 2021
 #####
 
+# example usage:
+# Rscript scripts/01_find_tx_overlaps.R --gtf data/gencode.v35.annotation.gtf.gz --outdir output/ --scriptdir scripts/ --scratchdir scratch/ --keepanno both
+
+
 ####
 ## SET OPTIONS, LOAD LIBRARIES
 options(stringsAsFactors = F)
@@ -23,7 +27,7 @@ option_list <- list(
   make_option("--outdir", default = "./output", 
               help = "Output directory to write transcript overlaps to [default is \"%default\"]"),
   make_option("--scriptdir", default = "./scripts",
-              help = "Scripts directory (to load functions saved in source scripts). [default assumes running from repo, scripts are in \"%default\"]"),
+              help = "Scripts directory (to load functions saved in source scripts). [default is \"%default\"]"),
   make_option("--scratchdir", default = NULL, 
               help = "Where should intermediate files be saved? If kept as NULL, intermediate files won't be saved. [default \"%default\"]"),
   make_option("--keepanno", default = "neither", 

@@ -6,6 +6,10 @@
 ## By: Olivia de Goede, 2021
 #####
 
+# example usage:
+# Rscript scripts/exA_check_paper_dsrnas_in_tx_overlaps.R --overlap output/03_putative_cisNAT_uniqueRegionsOnly_withAluFlag.RData --annofile output/gene_tx_exon_anno_files.RData --edittable data/gtex_editing_paper_tableS4.xlsx --gtex_gtf data/gencode.v26.GRCh38.genes.gtf --outdir output/ --figdir figures/exploratory/ --scriptdir scripts/
+
+
 ####
 ## SET OPTIONS, LOAD LIBRARIES
 options(stringsAsFactors = F)
@@ -22,12 +26,16 @@ option_list <- list(
               help = "RData file of transcript overlaps [default \"%default\"]"),
   make_option("--annofile", default = NULL,
               help = "File with genomic annotation of gene/tx/exon annotation [default \"%default\"]"),
-  make_option("--outdir", default = "./output", 
-              help = "Output directory to write transcript overlaps to [default \"%default\"]"),
-  make_option("--figdir", default = "./figures", 
-              help = "Figure directory to put figures in [default \"%default\"]"),
   make_option("--edittable", default = NULL,
-              help = "File of cis-NATs from RNA-editing paper (optional) [default \"%default\"]")
+              help = "File of cis-NATs from RNA-editing paper (optional) [default \"%default\"]"),
+  make_option("--gtex_gtf", default = NULL,
+              help = "File with GTEx's GTF [default \"%default\"]"),
+  make_option("--outdir", default = "./output", 
+              help = "Output directory to write transcript overlaps to [default is \"%default\"]"),
+  make_option("--figdir", default = "./figures", 
+              help = "Figure directory to put figures in [default is \"%default\"]"),
+  make_option("--scriptdir", default = "./scripts", 
+              help = "Script directory to get source code from [default is \"%default\"]")
 )
 
 # get command line options; if help option encountered, print help and exit;
@@ -40,23 +48,34 @@ opt <- parse_args(OptionParser(option_list=option_list))
 
 # confirm_no_overlap() checks a candidate gene and makes sure no tx are overlapping on opposite strand
 # if no overlap (expected), returns nothing; if overlap, returns gene name
-confirm_no_overlap <- function(g) {
-  gene_of_interest <- makeGRangesFromDataFrame(exon_anno[exon_anno$symbol == g, ])
-  rest_of_chr <- makeGRangesFromDataFrame(exon_anno[exon_anno$symbol != g & exon_anno$chr == levels(seqnames(gene_of_interest)), ])
+confirm_no_overlap <- function(g, exon_df = exon_anno, verbose = F) {
+  gene_of_interest <- makeGRangesFromDataFrame(exon_df[exon_df$symbol == g, ])
+  rest_of_chr <- makeGRangesFromDataFrame(exon_df[exon_df$symbol != g & exon_df$chr == levels(seqnames(gene_of_interest)), ])
   # look for findOverlaps that are found with ignore.strand = T, but not found with ignore.strand = F
   all_strands <- findOverlaps(gene_of_interest, rest_of_chr, ignore.strand = T)
   same_strand <- findOverlaps(gene_of_interest, rest_of_chr, ignore.strand = F)
+  if (verbose) {
+    print(paste("gene:", g))
+    print("granges of gene:")
+    print(gene_of_interest)
+    print("head of both-strand overlaps:")
+    print(head(all_strands))
+    print("number of both-strand overlaps:")
+    print(length(all_strands))
+    print("number of same-strand overlaps (not of interest):")
+    print(length(same_strand))
+  }
   if (length(all_strands) - length(same_strand) == 0) {
     return(FALSE)
   }
   else {
-    return(g)
+    return(paste("Gene has overlaps!:", g))
   }
 }
 
 # plot_nearby() makes a really basic plot with boxes for exons; coloring is gene name; y-axis position is unique transcript ID
 # (negative y value = minus strand, positive = plus strand)
-plot_nearby <- function(g, file_prefix = "05_nearbyGenes_", extender = NULL) {
+plot_nearby <- function(g, file_prefix = "exA_nearbyGenes_", extender = NULL) {
   file_png <- file.path(fig_dir, paste0(file_prefix, g, ".png"))
   file_pdf <- file.path(fig_dir, paste0(file_prefix, g, ".pdf"))
   if (is.null(extender)) {
@@ -85,6 +104,9 @@ if (is.null(opt$overlap)) {
 if (is.null(opt$annofile)) { 
   stop("Annotation file not provided, exiting\n") 
 }
+if (is.null(opt$gtex_gtf)) { 
+  stop("GTEx GTF file not provided, exiting\n") 
+}
 if (is.null(opt$edittable)) { 
   stop("RNA editing table not provided, exiting\n") 
 }
@@ -92,6 +114,7 @@ if (is.null(opt$edittable)) {
 # Create consistent directory variables
 out_dir <- file.path(opt$outdir)
 fig_dir <- file.path(opt$figdir)
+script_dir <- file.path(opt$scriptdir)
 # Check that directory exists
 if (!dir.exists(out_dir)) {
   stop("Output directory does not exist, exiting\n")
@@ -99,11 +122,14 @@ if (!dir.exists(out_dir)) {
 if (!dir.exists(fig_dir)) {
   stop("Figure directory does not exist, exiting\n")
 }
+if (!dir.exists(script_dir)) {
+  stop("Script directory does not exist, exiting\n")
+}
 
 
 ####
 ## LOAD SOURCE SCRIPTS
-# n/a
+source(file.path(script_dir, "source_gtf_reader.R"))
 
 
 ####
@@ -140,7 +166,7 @@ shared_cisnat <- paper_genes[(paper_genes %in% c(unique(putative_cisnat$minus_sy
 not_found <- paper_genes[!(paper_genes %in% c(unique(putative_cisnat$minus_symbol), unique(putative_cisnat$plus_symbol)))]
 out_df <- data.frame(editPaper_dsrna_gene = c(shared_cisnat, not_found), 
                      in_putative_cisnat_table = c(rep(TRUE, length(shared_cisnat)), rep(FALSE, length(not_found))))
-write.table(out_df, file = "05_immunogenic_dsrna_status.txt", sep = "\t", quote = F, row.names = F, col.names = T)
+write.table(out_df, file = file.path(out_dir, "exA_immunogenic_dsrna_status.txt"), sep = "\t", quote = F, row.names = F, col.names = T)
 
 
 ####
@@ -164,4 +190,26 @@ for (gene in not_found) {
 
 ####
 ## TODO: make same checks for not_found, but using GTEx gene annotation
+gtex_anno <- read_gtf(filename = opt$gtex_gtf)
+# Remove unnecessary columns and mitochondrial chromosome
+gtex_anno <- gtex_anno[,-c(2,6,8)] # these are unnecessary fields
+gtex_anno <- gtex_anno[gtex_anno$chr != "ChrM", ]
+# get the exon information to run "confirm_no_overlap()"
+gtex_anno <- get_basic_attr(gtex_anno)
+# filter gtex_anno to exon rows, add extra transcript information and exon number
+gtex_exon <- get_exon_attr(gtex_anno)
+gtex_exon <- gtex_exon[,-grep("attribute", colnames(gtex_exon))]
+
+summary(not_found %in% gtex_anno$symbol) # 1 isn't
+to_check <- not_found[not_found %in% gtex_anno$symbol]
+
+# as with the GENCODE v35 annotation, loop through each gene double check for overlaps in the GTEx gtf
+for (gene in not_found) {
+  confirm_no_overlap(g = gene, exon_df = gtex_exon, verbose = T)
+}
+# ^ no genes had successful output; don't have overlap in this annotation, either
+
+
+# Conclusion: will need to check with Qin how he identified whether a dsRNA was a cis-NAT
+
 

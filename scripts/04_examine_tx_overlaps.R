@@ -6,6 +6,10 @@
 ## By: Olivia de Goede, 2021
 #####
 
+# example usage:
+# Rscript scripts/04_examine_tx_overlaps.R --overlap output/03_putative_cisNAT_uniqueRegionsOnly_withAluFlag.RData --annofile output/gene_tx_exon_anno_files.RData --outdir output/ --figdir figures/ --edittable data/gtex_editing_paper_tableS4.xlsx --coloctable data/gtex_lncrna_paper_hits_summary_table_allGeneTypes.RData
+
+
 ####
 ## SET OPTIONS, LOAD LIBRARIES
 options(stringsAsFactors = F)
@@ -22,9 +26,9 @@ option_list <- list(
   make_option("--annofile", default = NULL,
               help = "File with genomic annotation of gene/tx/exon annotation [default \"%default\"]"),
   make_option("--outdir", default = "./output", 
-              help = "Output directory to write transcript overlaps to [default \"%default\"]"),
+              help = "Output directory to write transcript overlaps to [default is \"%default\"]"),
   make_option("--figdir", default = "./figures", 
-              help = "Figure directory to put figures in [default \"%default\"]"),
+              help = "Figure directory to put figures in [default is \"%default\"]"),
   make_option("--edittable", default = NULL,
               help = "File of cis-NATs from RNA-editing paper (optional) [default \"%default\"]"),
   make_option("--coloctable", default = NULL,
@@ -121,6 +125,13 @@ if (!dir.exists(fig_dir)) {
 ## READ IN INPUT FILES
 load(file.path(opt$overlap)) # object name from script 03: putative_cisnat
 load(file.path(opt$annofile)) # object name from script 01: gene_anno, tx_anno, and exon_anno
+
+
+####
+## Found missing annotation for two transcripts in putative cisnat; update and rewrite
+putative_cisnat["ENST00000649591.1__ENST00000385266.1", ]$plus_tx_type <- "miRNA"
+putative_cisnat["ENST00000408865.1__ENST00000409960.6", ]$minus_tx_type <- "miRNA"
+save(putative_cisnat, file = file.path(opt$overlap))
 
 
 ####

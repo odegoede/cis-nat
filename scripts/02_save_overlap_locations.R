@@ -6,6 +6,10 @@
 ## By: Olivia de Goede, 2021
 #####
 
+# example usage:
+# Rscript scripts/02_save_overlap_locations.R --overlap output/01_putative_cisNAT_uniqueRegionsOnly.RData --outdir output/
+
+
 ####
 ## SET OPTIONS, LOAD LIBRARIES
 options(stringsAsFactors = F)
