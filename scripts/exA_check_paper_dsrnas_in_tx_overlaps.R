@@ -2,7 +2,7 @@
 
 #####
 ## cis-NAT project
-## Script 05: Examine overlap between annotation-based overlaps and immunogenic dsRNAs from RNA-editing paper
+## Exploratory script 01: Examine overlap between annotation-based overlaps and immunogenic dsRNAs from RNA-editing paper
 ## By: Olivia de Goede, 2021
 #####
 
@@ -49,29 +49,32 @@ opt <- parse_args(OptionParser(option_list=option_list))
 # confirm_no_overlap() checks a candidate gene and makes sure no tx are overlapping on opposite strand
 # if no overlap (expected), returns nothing; if overlap, returns gene name
 confirm_no_overlap <- function(g, exon_df = exon_anno, verbose = F) {
-  gene_of_interest <- makeGRangesFromDataFrame(exon_df[exon_df$symbol == g, ])
-  rest_of_chr <- makeGRangesFromDataFrame(exon_df[exon_df$symbol != g & exon_df$chr == levels(seqnames(gene_of_interest)), ])
+  gene_of_interest <- makeGRangesFromDataFrame(exon_df[exon_df$symbol == g, ], keep.extra.columns = T)
+  rest_of_chr <- makeGRangesFromDataFrame(exon_df[exon_df$symbol != g & exon_df$chr == levels(seqnames(gene_of_interest)), ],
+                                          keep.extra.columns = T)
   # look for findOverlaps that are found with ignore.strand = T, but not found with ignore.strand = F
   all_strands <- findOverlaps(gene_of_interest, rest_of_chr, ignore.strand = T)
   same_strand <- findOverlaps(gene_of_interest, rest_of_chr, ignore.strand = F)
   if (verbose) {
-    print(paste("gene:", g))
-    print("granges of gene:")
-    print(gene_of_interest)
-    print("head of both-strand overlaps:")
-    print(head(all_strands))
-    print("number of both-strand overlaps:")
-    print(length(all_strands))
-    print("number of same-strand overlaps (not of interest):")
-    print(length(same_strand))
+    print(paste("gene is:", g))
+    print(paste("number of either-strand overlaps:", length(all_strands)))
+    print(paste("number of same-strand overlaps:", length(same_strand)))
   }
   if (length(all_strands) - length(same_strand) == 0) {
-    return(FALSE)
-  }
-  else {
-    return(paste("Gene has overlaps!:", g))
+    print(paste("** Gene has no opp-strand overlaps:", g))
+  } else {
+    print(paste("** Gene has overlaps!:", g))
+    if (verbose) {
+      all_matches <- paste(queryHits(all_strands), subjectHits(all_strands), sep = "__")
+      same_matches <- paste(queryHits(same_strand), subjectHits(same_strand), sep = "__")
+      opp_strand <- all_strands[!all_matches %in% same_matches]
+      print(gene_of_interest[unique(queryHits(opp_strand))])
+      print(rest_of_chr[unique(subjectHits(opp_strand))])
+    }
   }
 }
+
+
 
 # plot_nearby() makes a really basic plot with boxes for exons; coloring is gene name; y-axis position is unique transcript ID
 # (negative y value = minus strand, positive = plus strand)
@@ -130,6 +133,7 @@ if (!dir.exists(script_dir)) {
 ####
 ## LOAD SOURCE SCRIPTS
 source(file.path(script_dir, "source_gtf_reader.R"))
+source(file.path(script_dir, "source_temp_unzip.R"))
 
 
 ####
@@ -184,8 +188,13 @@ for (gene in not_found) {
   confirm_no_overlap(g = gene)
   plot_nearby(g = gene)
 }
-# ^ no genes had an output from confirm_no_overlap() (would return gene name if the gene did have an overlap on opposite strand)
 
+# four genes had overlaps: MCAM, TCTA, DAP3, and STAT6
+for (gene in c("MCAM", "TCTA", "DAP3", "STAT6")) {
+  confirm_no_overlap(g = gene, verbose = T)
+}
+# looks like 3 were missed due to the TSL thresholds, and 1 was missed due to length of overlap
+not_found <- not_found[!not_found %in% c("MCAM", "TCTA", "DAP3", "STAT6")]
 
 
 ####
@@ -200,15 +209,15 @@ gtex_anno <- get_basic_attr(gtex_anno)
 gtex_exon <- get_exon_attr(gtex_anno)
 gtex_exon <- gtex_exon[,-grep("attribute", colnames(gtex_exon))]
 
-summary(not_found %in% gtex_anno$symbol) # 1 isn't
-to_check <- not_found[not_found %in% gtex_anno$symbol]
+summary(not_found %in% gtex_anno$symbol)
 
 # as with the GENCODE v35 annotation, loop through each gene double check for overlaps in the GTEx gtf
 for (gene in not_found) {
   confirm_no_overlap(g = gene, exon_df = gtex_exon, verbose = T)
 }
-# ^ no genes had successful output; don't have overlap in this annotation, either
-
+# genes with overlaps in full anno: CFAP126
+# ^ manual checks show that this is just because of coordinates changing between versions
+# 12 genes still don't show overlaps: "ANXA9"   "MINDY1"  "EHBP1L1" "EML1"    "IL6R"    "GNA12"   "AMZ1"    "SWAP70"  "IFIT3"   "FUT2"    "QRSL1"   "TYMP"  
 
 # Conclusion: will need to check with Qin how he identified whether a dsRNA was a cis-NAT
 

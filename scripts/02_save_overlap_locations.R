@@ -93,22 +93,22 @@ bonus_dat <- do.call(rbind, lapply(rownames(bonus_rows), rep_per_exon))
 overlap_loc <- rbind(overlap_loc, bonus_dat)
 overlap_ranges <- makeGRangesFromDataFrame(overlap_loc, keep.extra.columns = T, seqnames.field = "chr",
                                            start.field = "longest_overlap_start", end.field = "longest_overlap_end")
-length(overlap_ranges) # 9,191
+length(overlap_ranges) # 15,989
 
 # narrow the ranges down to combine overlaps that intersect (i.e. overlapping overlaps)
-length(overlap_ranges_reduced <- reduce(overlap_ranges)) # 5,383
+length(overlap_ranges_reduced <- reduce(overlap_ranges)) # 7,351
 
 # if overlaps are very close together, might as well just merge - but what range?
 between <- gaps(overlap_ranges_reduced)
-summary(width(between) < 1000) # 476 are, 4907 aren't
-summary(width(between) < 100) # 82 are, 5301 aren't
+summary(width(between) < 1000) # 861 are, 6490 aren't
+summary(width(between) < 100) # 148 are, 7203 aren't
 # going to combine if within 100 bases
-length(overlap_ranges_reduced) # 5,383
-length(between) # also 5,383
+length(overlap_ranges_reduced) # 7,351
+length(between) # also 7,351
 
 # (a bit of exploratory code with magic numbers):
-which(width(between) < 100) # 108 is the first index
-overlap_ranges_reduced[107:109] # the short dist is between 107 (ends at 32817689) and 108 (starts at 32817699)
+which(width(between) < 100) # 142 is the first index
+overlap_ranges_reduced[141:143] # the short dist is between 141 (ends at 32817689) and 142 (starts at 32817699)
 # output from (which(width(between) < 100)) gives the index of the second region
 # (of the two that are within 100 bp of each other)
 
@@ -127,7 +127,7 @@ overlap_ranges_final <- sort(overlap_ranges_final)
 countOverlaps(overlap_ranges[1:6], overlap_ranges_final, type = "within") 
 # ^ named integers, showing how many ranges in overlap_ranges_final intersect the query 9k from overlap_ranges
 # so if there are no zeroes in countOverlaps(overlap_ranges, overlap_ranges_final), that means overlap_ranges_final covers everybody
-length(countOverlaps(overlap_ranges, overlap_ranges_final, type = "within")) # 9,191 - good, checking each overlap from initial list
+length(countOverlaps(overlap_ranges, overlap_ranges_final, type = "within")) # 15,989 - good, checking each overlap from initial list
 summary(countOverlaps(overlap_ranges, overlap_ranges_final, type = "within"))
 # ^ great! all are 1 or 2
 

@@ -201,6 +201,7 @@ collapsed_overlaps <- group_by(cisnat_alu_overlap, queryHits) %>%
   group_map(combine_alus, alus_df = alus_with_overlap) %>% purrr::reduce(rbind)
 putative_cisnat$alu_overlap <- NA
 putative_cisnat[collapsed_overlaps$row_number, ]$alu_overlap <- collapsed_overlaps$alus
+summary(is.na(putative_cisnat$alu_overlap)) # 296 contain part of an IRAlu; 15,690 don't
 
 # check multi-exon overlaps - do they overlap with Alu
 # (if so, should dive in and check whether the overlap is truly in the exon)

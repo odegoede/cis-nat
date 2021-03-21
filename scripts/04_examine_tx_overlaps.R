@@ -128,9 +128,16 @@ load(file.path(opt$annofile)) # object name from script 01: gene_anno, tx_anno, 
 
 
 ####
-## Found missing annotation for two transcripts in putative cisnat; update and rewrite
-putative_cisnat["ENST00000649591.1__ENST00000385266.1", ]$plus_tx_type <- "miRNA"
-putative_cisnat["ENST00000408865.1__ENST00000409960.6", ]$minus_tx_type <- "miRNA"
+## Found missing annotation for some transcripts in putative cisnat; update and rewrite
+missing_minus <- unique(putative_cisnat[is.na(putative_cisnat$minus_tx_type),]$minus_tx)
+for (t in missing_minus) {
+  putative_cisnat[putative_cisnat$minus_tx == t, ]$minus_tx_type <- tx_anno[t, ]$tx_type
+}
+missing_plus <- unique(putative_cisnat[is.na(putative_cisnat$plus_tx_type),]$plus_tx)
+for (t in missing_plus) {
+  putative_cisnat[putative_cisnat$plus_tx == t, ]$plus_tx_type <- tx_anno[t, ]$tx_type
+}
+
 save(putative_cisnat, file = file.path(opt$overlap))
 
 
@@ -150,7 +157,7 @@ tx_priority <- c("protein_coding", "lncRNA", "processed_transcript", "retained_i
 plot_dat <- putative_cisnat
 # get pair types:
 plot_dat <- get_pair_type(df = plot_dat, pair_type = "tx", tx_priority = tx_priority)
-length(unique(plot_dat$xcat_tx)) # 36
+length(unique(plot_dat$xcat_tx)) # 37
 unique(plot_dat$xcat_tx)
 # plot:
 xlab_lev <- names(table(plot_dat$xcat_tx)[order(table(plot_dat$xcat_tx), decreasing = T)])
@@ -220,8 +227,9 @@ plot_dat <- data.frame(bp_thresh = c(100, 200, 300, 400, 500, 600, 700, 800, 900
 for (i in c(1:nrow(plot_dat))) {
   plot_dat[i, ]$num_regions <- nrow(putative_cisnat[putative_cisnat$longest_overlap_width >= plot_dat[i,]$bp_thresh, ])
 }
-g <- ggplot(plot_dat, aes(x = as.factor(bp_thresh), y = num_regions)) + geom_col() + 
-  theme_bw() + geom_text(aes(y = num_regions, label = num_regions), vjust = -0.3, size = 3) +
+plot_dat$prop_of_overlaps <- plot_dat$num_regions/plot_dat[plot_dat$bp_thresh == 100, ]$num_regions
+g <- ggplot(plot_dat, aes(x = as.factor(bp_thresh), y = prop_of_overlaps)) + geom_col() + 
+  theme_bw() + geom_text(aes(y = prop_of_overlaps, label = num_regions), vjust = -0.3, size = 3) +
   xlab("overlap length (bp) threshold") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
 ggsave(g, file = file.path(fig_dir, "04_04_number_at_overlapLengthThresholds.png"), width = 6, height = 5)
@@ -275,6 +283,6 @@ if (!is.null(opt$coloctable)) {
   to_check <- gsub("\\..*", "", coloc_genes) # 146 genes
   length(txs <- rownames(tx_anno[gsub("\\..*", "", tx_anno$ensgene) %in% to_check, ])) # 603 transcripts
   length(txs <- txs[which(txs %in% unique(c(putative_cisnat$minus_tx, putative_cisnat$plus_tx)))])
-  # ^ 47 transcripts that are colocalized with some trait and are also in putative cisNATs
-  length(unique(tx_anno[txs, ]$ensgene)) # correspond to 38 genes
+  # ^ 103 transcripts that are colocalized with some trait and are also in putative cisNATs
+  length(unique(tx_anno[txs, ]$ensgene)) # correspond to 49 genes
 }

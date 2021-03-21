@@ -267,45 +267,18 @@ if (opt$keepanno %in% c("RData", "both")) {
 ## Find overlaps! 
 ## Criteria for overlaps:
 # 1. transcripts come from opposite strands
-# 2. transcripts either have good transcript support level scores (TSL 1-3), or are the transcripts
-#    with the most evidence for their gene
-# 3. have at least 100 bp *continuous* overlap
+# 2. have at least 100 bp *continuous* overlap
+# REMOVED CRITERION 03/19/2021: transcripts either have good transcript support level scores (TSL 1-3), 
+#    or are the transcripts with the most evidence for their gene
+#    (have now realized that unsupported transcripts will filter themselves out through lack of 
+#    hyperediting in RNA-seq data)
 
 
-## Step 1: Filter transcripts based on TSL
-temp_tx <- tx_anno
-
-good_scores <- c("tsl_1", "tsl_2", "tsl_3")
-bad_scores <- c("tsl_4", "tsl_5", "tsl_NA")
-temp_tx$to_keep <- FALSE
-temp_tx[temp_tx$tsl %in% good_scores, ]$to_keep <- TRUE
-# which genes have at least one transcript with a good score?:
-good_genes <- unique(temp_tx[temp_tx$to_keep, ]$ensgene)
-# which genes don't have any transcripts with good scores?:
-bad_genes <- unique(temp_tx$ensgene)[-which(unique(temp_tx$ensgene) %in% good_genes)]
-# For the bad_genes, get the transcripts with the best possible TSL scores (even though they're
-# subthreshold), just so that we have some representation of that gene.
-# Loop through each "bad score" (from least-bad to worst), get the set of bad_genes that have
-# at least one transcript of that bad-but-not-worst score; mark the transcripts (rows of temp_tx)
-# that are in these subthresh_genes and have this bad-but-not-worst score as rows to keep:
-for (i in bad_scores) {
-  subthresh_genes <- unique(temp_tx[temp_tx$ensgene %in% bad_genes & temp_tx$tsl == i, ]$ensgene)
-  temp_tx[temp_tx$ensgene %in% subthresh_genes & temp_tx$tsl == i, ]$to_keep <- TRUE
-  bad_genes <- bad_genes[-which(bad_genes %in% subthresh_genes)]
-}
-table(temp_tx$to_keep) # FALSE, 80314 ; TRUE, 149266
-temp_tx <- temp_tx[temp_tx$to_keep, ]
-temp_exon <- exon_anno[exon_anno$tx_id %in% temp_tx$tx_id, ]
-# save these intermediate files if scratchdir was provided:
-if (exists("scratch_dir")) {
-  save(temp_tx, temp_exon, file = file.path(scratch_dir, "01_starterFiles_find_tx_overlaps.RData"))
-}
-
-
-
-## Step 2: Separate into plus and minus strand GRanges objects
+## Step 1: Separate into plus and minus strand GRanges objects
 # (overlaps need to be on opposite strands)
-table(temp_tx$strand) # 73,237 - ; 76,029 +
+temp_tx <- tx_anno
+temp_exon <- exon_anno
+table(temp_tx$strand) # 111,636 - ; 117,944 +
 
 plus_tx <- temp_tx[temp_tx$strand == "+", ]
 minus_tx <- temp_tx[temp_tx$strand == "-", ]
@@ -317,12 +290,12 @@ names(minus_exon) <- paste(minus_exon$tx_id, minus_exon$exon_number, sep = "_")
 
 
 
-## Step 3: Find overlaps
+## Step 2: Find overlaps
 hits <- findOverlaps(plus_exon, minus_exon, select = "all", ignore.strand = T, minoverlap = 100)
 
 minus_ind <- subjectHits(hits) # indices of overlapping regions in minus_exon GRanges object
 plus_ind <- queryHits(hits) # indices of overlapping regions in plus_exon GRanges object
-length(minus_ind) # 19,971 overlaps 
+length(minus_ind) # 47,614 overlaps 
 
 # make a data.frame summarizing all of these overlaps
 overlap_df <- data.frame(minus_ind = minus_ind, plus_ind = plus_ind, 
@@ -335,8 +308,8 @@ overlap_df <- data.frame(minus_ind = minus_ind, plus_ind = plus_ind,
 
 overlap_df$tx_pair <- paste(overlap_df$minus_tx, overlap_df$plus_tx, sep = "__")
 overlap_df$gene_pair <- paste(overlap_df$minus_gene, overlap_df$plus_gene, sep = "__")
-length(unique(overlap_df$tx_pair)) # 16,096 unique tx pairs in these overlaps
-length(unique(overlap_df$gene_pair)) # 4,837 unique gene pairs in these overlaps
+length(unique(overlap_df$tx_pair)) # 38,681 unique tx pairs in these overlaps
+length(unique(overlap_df$gene_pair)) # 6,155 unique gene pairs in these overlaps
 
 overlap_df$overlap_start <- apply(overlap_df[,c("minus_start", "plus_start")], 1, max)
 overlap_df$overlap_end <- apply(overlap_df[,c("minus_end", "plus_end")], 1, min)
@@ -345,20 +318,21 @@ overlap_df$overlap_width <- overlap_df$overlap_end - overlap_df$overlap_start + 
 
 
 
-## Step 4: Check for any overlapping transcript pairs that share start OR end coordinates in an exon
+## Step 3: Check for any overlapping transcript pairs that share start OR end coordinates in an exon
 # (this is rare, but this means that once processed the transcripts could have continuous overlaps 
 # across multiple exons, which would need to be summed)
 length(start_end_matches <- boundary_match(overlap_df)) 
-# ^ 217 tx pairs where the exon match, right up to at least one exon boundary (and may extend into next)
+# ^ 389 tx pairs where the exon match, right up to at least one exon boundary (and may extend into next)
 
 # If these boundary match pairs also overlap at the next exon starting right from its boundary, 
 # they are multi-exon overlaps
 multi_check <- sapply(start_end_matches, next_exon_check, df = overlap_df)
-length(multi_overlaps <- names(multi_check[multi_check])) # 5 transcript pairs with multi-exon overlaps
+multi_check <- unlist(multi_check)
+length(multi_overlaps <- names(multi_check[multi_check])) # 11 transcript pairs with multi-exon overlaps
 
 
 
-## Step 5: Organize overlaps into a data.frame
+## Step 4: Organize overlaps into a data.frame
 # each row is a unique tx_pair
 # fields: chr, minus_gene, minus_symbol, minus_gene_type, plus_gene, plus_symbol, plus_gene_type, 
 # minus_tx, minus_tx_type, plus_tx, plus_tx_type, minus_exons_in_overlap, plus_exons_in_overlap, 
@@ -398,7 +372,7 @@ tx_pair_dat$plus_tx_type <- tx_anno[tx_pair_dat$plus_tx, ]$tx_type
 
 
 
-## Step 6: Combine entries for the multi-exon overlaps
+## Step 5: Combine entries for the multi-exon overlaps
 # for this step I have updated each situation by hand rather than tried to write a function, since there
 # are only 5 of these multi-exon overlaps, and each one will be a different situation (would take a lot
 # of time and effort to generalize into a function)
@@ -459,9 +433,102 @@ tx_pair_dat["ENST00000355772.8__ENST00000396799.3", ]$longest_overlap_width <- s
 tx_pair_dat["ENST00000355772.8__ENST00000396799.3", ]$longest_overlap_start <- paste(overlap_df[overlap_df$tx_pair == "ENST00000355772.8__ENST00000396799.3", ]$overlap_start, collapse = ",")
 tx_pair_dat["ENST00000355772.8__ENST00000396799.3", ]$longest_overlap_end <- paste(overlap_df[overlap_df$tx_pair == "ENST00000355772.8__ENST00000396799.3", ]$overlap_end, collapse = ",")
 
+## "ENST00000599229.2__ENST00000382096.5" 
+p <- "ENST00000599229.2__ENST00000382096.5"
+t1 <- "ENST00000599229.2"
+t2 <- "ENST00000382096.5"
+overlap_df[overlap_df$tx_pair == p, ]
+tx_pair_dat[p, ]
+exon_anno[exon_anno$tx_id == t1, ]
+exon_anno[exon_anno$tx_id == t2, ]
+# continuous exon overlap is minus exons 3,4 and part of 5; with plus exons 3,2 and part of 1
+# summing these will be a longer overlap than taking the other overlap between these transcripts
+minus_exons <- paste(t1, c(3,4,5), sep = "_")
+tx_pair_dat[p, ]$multi_exon_overlap <- TRUE
+tx_pair_dat[p, ]$longest_overlap_width <- sum(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_width)
+tx_pair_dat[p, ]$longest_overlap_start <- paste(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_start, collapse = ",")
+tx_pair_dat[p, ]$longest_overlap_end <- paste(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_end, collapse = ",")
+
+## "ENST00000537019.5__ENST00000339764.6"
+p <- "ENST00000537019.5__ENST00000339764.6"
+t1 <- "ENST00000537019.5"
+t2 <- "ENST00000339764.6"
+overlap_df[overlap_df$tx_pair == p, ]
+tx_pair_dat[p, ]
+exon_anno[exon_anno$tx_id == t1, ]
+exon_anno[exon_anno$tx_id == t2, ]
+# the minus 3/4/5, plus 4/5/6 pairing is not boundary-perfect (off by a couple of bases at one point). 
+# choosing the 1/8 pairing instead
+minus_exons <- paste(t1, 1, sep = "_")
+tx_pair_dat[p, ]$multi_exon_overlap <- FALSE
+tx_pair_dat[p, ]$longest_overlap_width <- sum(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_width)
+tx_pair_dat[p, ]$longest_overlap_start <- paste(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_start, collapse = ",")
+tx_pair_dat[p, ]$longest_overlap_end <- paste(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_end, collapse = ",")
+
+## "ENST00000537019.5__ENST00000537753.5"
+p <- "ENST00000537019.5__ENST00000537753.5"
+t1 <- "ENST00000537019.5"
+t2 <- "ENST00000537753.5"
+overlap_df[overlap_df$tx_pair == p, ]
+tx_pair_dat[p, ]
+exon_anno[exon_anno$tx_id == t1, ]
+exon_anno[exon_anno$tx_id == t2, ]
+# same as above: the minus 3/4/5, plus 1/2/3 pairing is not boundary-perfect 
+# choosing the 1/5 pairing instead
+minus_exons <- paste(t1, 1, sep = "_")
+tx_pair_dat[p, ]$multi_exon_overlap <- FALSE
+tx_pair_dat[p, ]$longest_overlap_width <- sum(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_width)
+tx_pair_dat[p, ]$longest_overlap_start <- paste(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_start, collapse = ",")
+tx_pair_dat[p, ]$longest_overlap_end <- paste(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_end, collapse = ",")
+
+## "ENST00000537019.5__ENST00000542350.5"
+p <- "ENST00000537019.5__ENST00000542350.5"
+t1 <- "ENST00000537019.5"
+t2 <- "ENST00000542350.5"
+overlap_df[overlap_df$tx_pair == p, ]
+tx_pair_dat[p, ]
+exon_anno[exon_anno$tx_id == t1, ]
+exon_anno[exon_anno$tx_id == t2, ]
+# the only two exons with overlap are the shared-boundary ones, can just sum their overlap_width
+minus_exons <- paste(t1, 1, sep = "_")
+tx_pair_dat[p, ]$multi_exon_overlap <- FALSE
+tx_pair_dat[p, ]$longest_overlap_width <- sum(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_width)
+tx_pair_dat[p, ]$longest_overlap_start <- paste(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_start, collapse = ",")
+tx_pair_dat[p, ]$longest_overlap_end <- paste(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_end, collapse = ",")
+
+## "ENST00000537019.5__ENST00000543947.1"
+p <- "ENST00000537019.5__ENST00000543947.1"
+t1 <- "ENST00000537019.5"
+t2 <- "ENST00000543947.1"
+overlap_df[overlap_df$tx_pair == p, ]
+tx_pair_dat[p, ]
+exon_anno[exon_anno$tx_id == t1, ]
+exon_anno[exon_anno$tx_id == t2, ]
+# skips exons in the plus transcript
+# just take the 1/5 pairing
+minus_exons <- paste(t1, 1, sep = "_")
+tx_pair_dat[p, ]$multi_exon_overlap <- FALSE
+tx_pair_dat[p, ]$longest_overlap_width <- sum(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_width)
+tx_pair_dat[p, ]$longest_overlap_start <- paste(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_start, collapse = ",")
+tx_pair_dat[p, ]$longest_overlap_end <- paste(overlap_df[overlap_df$tx_pair == p & overlap_df$minus_exon %in% minus_exons, ]$overlap_end, collapse = ",")
+
+## "ENST00000361959.7__ENST00000396799.3"
+p <- "ENST00000361959.7__ENST00000396799.3"
+t1 <- "ENST00000361959.7"
+t2 <- "ENST00000396799.3"
+overlap_df[overlap_df$tx_pair == p, ]
+tx_pair_dat[p, ]
+exon_anno[exon_anno$tx_id == t1, ]
+exon_anno[exon_anno$tx_id == t2, ]
+# the only two exons with overlap are the shared-boundary ones, can just sum their overlap_width
+tx_pair_dat[p, ]$multi_exon_overlap <- TRUE
+tx_pair_dat[p, ]$longest_overlap_width <- sum(overlap_df[overlap_df$tx_pair == p, ]$overlap_width)
+tx_pair_dat[p, ]$longest_overlap_start <- paste(overlap_df[overlap_df$tx_pair == p, ]$overlap_start, collapse = ",")
+tx_pair_dat[p, ]$longest_overlap_end <- paste(overlap_df[overlap_df$tx_pair == p, ]$overlap_end, collapse = ",")
 
 
-## Step 7: Flag duplicate overlaps
+
+## Step 6: Flag duplicate overlaps
 # duplicate_overlap field: marks overlaps involving alternative transcripts of the same gene that 
 # have the exact same overlapping region
 tx_pair_dat$overlap_id <- paste(paste(tx_pair_dat$minus_gene, tx_pair_dat$plus_gene, sep = "_"),
@@ -469,7 +536,7 @@ tx_pair_dat$overlap_id <- paste(paste(tx_pair_dat$minus_gene, tx_pair_dat$plus_g
 tx_pair_dat$duplicate_overlap <- FALSE
 duplicate_ids <- tx_pair_dat[duplicated(tx_pair_dat$overlap_id), ]$overlap_id
 tx_pair_dat[tx_pair_dat$overlap_id %in% duplicate_ids, ]$duplicate_overlap <- TRUE
-summary(tx_pair_dat$duplicate_overlap) # 6,174 unique overlaps; 9,922 overlaps represent the same gene pair and overlapping region
+summary(tx_pair_dat$duplicate_overlap) # 9,808 unique overlaps; 28,873 overlaps represent the same gene pair and overlapping region
 # save these intermediate files if scratchdir was provided
 if (exists("scratch_dir")) {
   save(tx_pair_dat, file = file.path(scratch_dir, "01_full_transcript_overlap_table.RData"))
@@ -477,7 +544,7 @@ if (exists("scratch_dir")) {
 
 
 
-## Step 8: filter down to unique overlap regions
+## Step 7: filter down to unique overlap regions
 # some tx_pairs are alternative transcripts of genes that have the exact same overlap
 # this filters to just unique overlap regions
 # (but note: the same gene pair is still often represented multiple times, e.g. if alternative transcripts
@@ -501,12 +568,12 @@ to_filter$plus_tsl <- factor(tx_anno[to_filter$plus_tx, ]$tsl, levels = tsl_prio
 to_filter$minus_tx_type <- factor(to_filter$minus_tx_type, levels = tx_priority, ordered = T) # min is best (protein-coding), max is worst (TEC)
 to_filter$plus_tx_type <- factor(to_filter$plus_tx_type, levels = tx_priority, ordered = T)
 
-dup_ids <- unique(to_filter$overlap_id) # 3,011 rows from these 9,922 rows
+dup_ids <- unique(to_filter$overlap_id) # 6,178 rows from these 28,873 rows
 keep_ids <- as.character(sapply(dup_ids, choose_which_dup, df = to_filter))
 to_keep <- to_filter[keep_ids, colnames(unique_overlaps)]
-dim(to_keep) # 3,011 overlaps
+dim(to_keep) # 6,178 overlaps
 
-putative_cisnat <- rbind(unique_overlaps, to_keep) # 9,185 rows
+putative_cisnat <- rbind(unique_overlaps, to_keep) # 15,986 rows
 putative_cisnat <- putative_cisnat[,-c(grep("duplicate_overlap", colnames(putative_cisnat)),
                                        grep("overlap_id", colnames(putative_cisnat)))]
 
