@@ -7,7 +7,7 @@
 #####
 
 # example usage:
-# Rscript scripts/01_find_tx_overlaps.R --gtf data/gencode.v35.annotation.gtf.gz --outdir output/ --scriptdir scripts/ --scratchdir scratch/ --keepanno both
+# Rscript scripts/01_find_tx_overlaps.R --gtf data/gencode.v35.annotation.gtf.gz --outdir output/ --scriptdir scripts/ --scratchdir scratch/ --figdir figures/ --keepanno both
 
 
 ####
@@ -25,13 +25,15 @@ option_list <- list(
   make_option("--gtf", default = NULL, 
               help = "GTF file [default \"%default\"]"),
   make_option("--outdir", default = "./output", 
-              help = "Output directory to write transcript overlaps to [default is \"%default\"]"),
+              help = "Output directory [default is \"%default\"]"),
   make_option("--scriptdir", default = "./scripts",
               help = "Scripts directory (to load functions saved in source scripts). [default is \"%default\"]"),
   make_option("--scratchdir", default = NULL, 
               help = "Where should intermediate files be saved? If kept as NULL, intermediate files won't be saved. [default \"%default\"]"),
-  make_option("--keepanno", default = "neither", 
-              help = "Should the gene, transcript, and exon annotations be saved? Files will be saved to outdir. \"text\" for .txt files, \"RData\" for .RData, \"both\" for both .txt and .RData files. Anything else will be interpreted as \"neither\". [default \"%default\"]")
+  make_option("--figdir", default = "./figures", 
+              help = "Figure directory [default is \"%default\"]"),
+  make_option("--keepanno", default = "both", 
+              help = "Should the gene, transcript, and exon annotations be saved? Files will be saved to outdir. \"RData\" for just .RData files, \"both\" for both .txt and .RData files. [default \"%default\"]")
 )
 
 # get command line options; if help option encountered, print help and exit;
@@ -40,8 +42,52 @@ opt <- parse_args(OptionParser(option_list=option_list))
 
 
 ####
-## DEFINE FUNCTIONS
+## INPUT TESTS
+# Check the required arguments (GTF file) is provided
+if (is.null(opt$gtf)) { 
+  stop("GTF file not provided, exiting\n") 
+}
 
+# Create variable out_dir and script_dir that is consistent (doesn't have trailing "/")
+out_dir <- file.path(opt$outdir)
+script_dir <- file.path(opt$scriptdir)
+# Check that the directories exist
+if (!dir.exists(out_dir)) {
+  stop("Output directory does not exist, exiting\n")
+}
+if (!dir.exists(script_dir)) {
+  stop("Script directory does not exist, exiting\n")
+}
+if (!dir.exists(fig_dir)) {
+  stop("Figure directory does not exist, exiting\n")
+}
+
+# If scratch directory is provided, create variable scratch_dir that is consistent
+if (!is.null(opt$scratchdir)) {
+  scratch_dir <- file.path(opt$scratchdir)
+  # Check that scratch directory exists
+  if (!dir.exists(scratch_dir)) {
+    stop("Scratch directory does not exist, exiting\n")
+  }
+}
+
+
+####
+## LOAD SOURCE SCRIPTS
+source(file.path(script_dir, "source_temp_unzip.R"))
+source(file.path(script_dir, "source_gtf_reader.R"))
+
+
+####
+## READ IN INPUT FILES
+gtf_anno <- read_gtf(filename = opt$gtf)
+# Remove unnecessary columns and mitochondrial chromosome
+gtf_anno <- gtf_anno[,-c(2,6,8)] # these are unnecessary fields
+gtf_anno <- gtf_anno[gtf_anno$chr != "ChrM", ]
+
+
+####
+## DEFINE FUNCTIONS
 # boundary_match(): for a tx_pair, see if any of its exon boundaries are shared (potential for 
 # an overlap that spans multiple exons)
 boundary_match <- function(df, id_field = "tx_pair") {
@@ -52,7 +98,6 @@ boundary_match <- function(df, id_field = "tx_pair") {
   bound_matches <- unique(bound_matches)
   bound_matches
 }
-
 
 # next_exon_check(): labels tx_pairs as TRUE/FALSE for multi-exon overlaps (output is just T/F, 
 # not info on where the overlap is; that assessment is tricky enough that we should check manually)
@@ -101,7 +146,6 @@ next_exon_check <- function(df, tx_pair) {
   }
 }
 
-
 # combine_dup_rows(): to parse through and combine info from the transcript pairs with multiple
 # overlaps (i.e. tx_pairs with more than 1 row in overlap_df)
 combine_dup_rows <- function(df = overlap_df, tx_pair) {
@@ -127,7 +171,6 @@ combine_dup_rows <- function(df = overlap_df, tx_pair) {
                        row.names = tx_pair)
   out_df
 }
-
 
 # choose_which_dup(): for duplicate overlap events (same gene pair, exact same coordinates of overlap), 
 # pick the "best" one (based on TSL and transcript types)
@@ -177,53 +220,6 @@ choose_which_dup <- function(df = to_filter, overlap_id) {
 }
 
 
-
-####
-## INPUT TESTS
-# Check the required arguments (GTF file) is provided
-if (is.null(opt$gtf)) { 
-  stop("GTF file not provided, exiting\n") 
-}
-
-# Create variable out_dir and script_dir that is consistent (doesn't have trailing "/")
-out_dir <- file.path(opt$outdir)
-script_dir <- file.path(opt$scriptdir)
-# Check that the directories exist
-if (!dir.exists(out_dir)) {
-  stop("Output directory does not exist, exiting\n")
-}
-if (!dir.exists(script_dir)) {
-  stop("Script directory does not exist, exiting\n")
-}
-
-# If scratch directory is provided, create variable scratch_dir that is consistent
-if (!is.null(opt$scratchdir)) {
-  scratch_dir <- file.path(opt$scratchdir)
-  # Check that scratch directory exists
-  if (!dir.exists(scratch_dir)) {
-    stop("Scratch directory does not exist, exiting\n")
-  }
-}
-
-
-
-####
-## LOAD SOURCE SCRIPTS
-source(file.path(script_dir, "source_temp_unzip.R"))
-source(file.path(script_dir, "source_gtf_reader.R"))
-
-
-
-####
-## READ IN INPUT FILES
-gtf_anno <- read_gtf(filename = opt$gtf)
-
-# Remove unnecessary columns and mitochondrial chromosome
-gtf_anno <- gtf_anno[,-c(2,6,8)] # these are unnecessary fields
-gtf_anno <- gtf_anno[gtf_anno$chr != "ChrM", ]
-
-
-
 ####
 ## Make the gene_anno, transcript_anno, and exon_anno files
 # add gene information from attribute field (all 3 anno files need this)
@@ -251,14 +247,12 @@ attr_list <- get_attr_list(exon_anno[grepl("transcript_support_level", exon_anno
 exon_anno[grepl("transcript_support_level", exon_anno$attribute), ]$tsl <- paste0("tsl_", pull_attr(attr_list, "transcript_support_level"))
 exon_anno <- exon_anno[,-grep("attribute", colnames(exon_anno))]
 
-# if the user put something in --keepanno, save these files to outdir
-if (opt$keepanno %in% c("text", "both")) {
+# save these files to outdir
+save(gene_anno, tx_anno, exon_anno, file = file.path(out_dir, "gene_tx_exon_anno_files.RData"))
+if (opt$keepanno == "both") {
   write.table(gene_anno, file = paste0(out_dir, "gene_anno.txt"), row.names = T, col.names = NA, quote = F, sep = "\t")
   write.table(tx_anno, file = paste0(out_dir, "transcript_anno.txt"), row.names = T, col.names = NA, quote = F, sep = "\t")
   write.table(exon_anno, file = paste0(out_dir, "exon_anno.txt"), row.names = T, col.names = NA, quote = F, sep = "\t")
-}
-if (opt$keepanno %in% c("RData", "both")) {
-  save(gene_anno, tx_anno, exon_anno, file = file.path(out_dir, "gene_tx_exon_anno_files.RData"))
 }
 
 

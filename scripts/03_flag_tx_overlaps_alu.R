@@ -7,8 +7,7 @@
 #####
 
 # example usage:
-# Rscript scripts/03_flag_tx_overlaps_alu.R --overlap output/01_putative_cisNAT_uniqueRegionsOnly.RData --alufile data/hg38_repeats.Alu.bed.gz --outdir output/ --scriptdir scripts/
-
+# Rscript scripts/03_flag_tx_overlaps_alu.R --alufile data/hg38_repeats.Alu.bed.gz --outdir output/ --scriptdir scripts/ --scratchdir scratch/ --figdir figures/
 
 # if an overlapping transcript also contains part of an inverted-repeat Alu, we will need to dive into 
 # it to figure out if RNA editing is on the cis-NAT dsRNA (from the overlapping transcripts), or the 
@@ -35,14 +34,61 @@ option_list <- list(
   make_option("--alufile", default = NULL,
               help = "File with genomic annotation of Alu regions [default \"%default\"]"),
   make_option("--outdir", default = "./output", 
-              help = "Output directory to write transcript overlaps to [default is \"%default\"]"),
+              help = "Output directory [default is \"%default\"]"),
   make_option("--scriptdir", default = "./scripts",
-              help = "Scripts directory (to load functions saved in source scripts). [default is \"%default\"]")
+              help = "Scripts directory (to load functions saved in source scripts). [default is \"%default\"]"),
+  make_option("--scratchdir", default = NULL, 
+              help = "Where should intermediate files be saved? If kept as NULL, intermediate files won't be saved. [default \"%default\"]"),
+  make_option("--figdir", default = "./figures", 
+              help = "Figure directory [default is \"%default\"]")
 )
 
 # get command line options; if help option encountered, print help and exit;
 # otherwise if options not found on command line, then set defaults.
 opt <- parse_args(OptionParser(option_list=option_list))
+
+
+####
+## INPUT TESTS
+# Create variables for the directories that Eare consistent (doesn't have trailing "/")
+out_dir <- file.path(opt$outdir)
+script_dir <- file.path(opt$scriptdir)
+fig_dir <- file.path(opt$figdir)
+# Check that the directories exist
+if (!dir.exists(out_dir)) {
+  stop("Output directory does not exist, exiting\n")
+}
+if (!dir.exists(script_dir)) {
+  stop("Script directory does not exist, exiting\n")
+}
+if (!dir.exists(fig_dir)) {
+  stop("Figure directory does not exist, exiting\n")
+}
+
+if (!is.null(opt$scratchdir)) {
+  scratch_dir <- file.path(opt$scratchdir)
+  # Check that scratch directory exists
+  if (!dir.exists(scratch_dir)) {
+    stop("Scratch directory does not exist, exiting\n")
+  }
+}
+
+
+####
+## LOAD SOURCE SCRIPTS
+source(file.path(script_dir, "source_temp_unzip.R"))
+
+
+####
+## READ IN INPUT FILES
+load(file.path(out_dir, "01_putative_cisNAT_uniqueRegionsOnly.RData")) # object name from script 01: putative_cisnat
+alu_file <- file.path(opt$alufile)
+if (endsWith(alu_file, "gz") | endsWith(alu_file, "zip") | endsWith(alu_file, "bzip2") | endsWith(alu_file, "xz")) {
+  alu_locs <- suppressWarnings(temp_unzip(alu_file, fread, data.table = F))
+} else {
+  alu_locs <- suppressWarnings(fread(alu_file, data.table = F))
+}
+colnames(alu_locs) <- c("chr", "start", "end", "name", "score", "strand")
 
 
 ####
@@ -77,45 +123,6 @@ combine_alus <- function(grouped_df, key, alus_df) {
   output <- data.frame(row_number = unlist(key), alus = alu_string)
   output
 }
-
-
-####
-## INPUT TESTS
-# Check the required arguments (overlaps file) are provided
-if (is.null(opt$overlap)) { 
-  stop("Overlaps file not provided, exiting\n") 
-}
-if (is.null(opt$alufile)) { 
-  stop("Alu file not provided, exiting\n") 
-}
-
-# Create variable out_dir and script_dir that are consistent (doesn't have trailing "/")
-out_dir <- file.path(opt$outdir)
-script_dir <- file.path(opt$scriptdir)
-# Check that the directories exist
-if (!dir.exists(out_dir)) {
-  stop("Output directory does not exist, exiting\n")
-}
-if (!dir.exists(script_dir)) {
-  stop("Script directory does not exist, exiting\n")
-}
-
-
-####
-## LOAD SOURCE SCRIPTS
-source(file.path(script_dir, "source_temp_unzip.R"))
-
-
-####
-## READ IN INPUT FILES
-load(file.path(opt$overlap)) # object name from script 01: putative_cisnat
-alu_file <- file.path(opt$alufile)
-if (endsWith(alu_file, "gz") | endsWith(alu_file, "zip") | endsWith(alu_file, "bzip2") | endsWith(alu_file, "xz")) {
-  alu_locs <- suppressWarnings(temp_unzip(alu_file, fread, data.table = data.table))
-} else {
-  alu_locs <- suppressWarnings(fread(alu_file, data.table = data.table))
-}
-colnames(alu_locs) <- c("chr", "start", "end", "name", "score", "strand")
 
 
 ####
@@ -211,4 +218,20 @@ putative_cisnat[putative_cisnat$multi_exon_overlap,] # all NA, no worries
 save(putative_cisnat, file = file.path(out_dir, "03_putative_cisNAT_uniqueRegionsOnly_withAluFlag.RData"))
 write.table(putative_cisnat, file = file.path(out_dir, "03_putative_cisNAT_uniqueRegionsOnly_withAluFlag.txt"),
             quote = F, sep = "\t", col.names = T, row.names = F)
+# save gene list
+genes <- unique(c(putative_cisnat$plus_gene, putative_cisnat$minus_gene))
+write.table(genes, file = file.path(out_dir, "03_putative_cisnat_genes.txt"),
+            quote = F, sep = "\t", col.names = F, row.names = F)
+# load("../GTEx/data/annotation_and_gene_groups/rnaseqc_genes_info.RData")
+# genes_match <- genes[gsub("\\..*", "", genes) %in% rnaseqc.genes$ensgene_char]
+# genes_nomatch <- genes[!gsub("\\..*", "", genes) %in% rnaseqc.genes$ensgene_char]
+# gtex_genes <- rownames(rnaseqc.genes[rnaseqc.genes$ensgene_char %in% gsub("\\..*", "", genes_match), ])
+# symb_nomatch <- gene_anno[genes_nomatch, ]$symbol
+# temp <- rnaseqc.genes[rnaseqc.genes$symbol %in% symb_nomatch, ]
+# to_remove <- unique(temp$symbol[duplicated(temp$symbol)])
+# temp <- temp[-which(temp$symbol %in% to_remove), ]
+# gtex_genes <- c(gtex_genes, rownames(temp))
+# summary(gtex_genes %in% rownames(rnaseqc.genes))
+# write.table(gtex_genes, file = file.path(out_dir, "03_putative_cisnat_genes_gtexIDs.txt"),
+#             quote = F, sep = "\t", col.names = F, row.names = F)
 

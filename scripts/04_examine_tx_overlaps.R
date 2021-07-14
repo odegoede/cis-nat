@@ -7,7 +7,7 @@
 #####
 
 # example usage:
-# Rscript scripts/04_examine_tx_overlaps.R --overlap output/03_putative_cisNAT_uniqueRegionsOnly_withAluFlag.RData --annofile output/gene_tx_exon_anno_files.RData --outdir output/ --figdir figures/ --edittable data/gtex_editing_paper_tableS4.xlsx --coloctable data/gtex_lncrna_paper_hits_summary_table_allGeneTypes.RData
+# Rscript scripts/04_examine_tx_overlaps.R --outdir output/ --scriptdir scripts/ --scratchdir scratch/ --figdir figures/ --edittable data/gtex_editing_paper_tableS4.xlsx --coloctable data/gtex_lncrna_paper_hits_summary_table_allGeneTypes.RData
 
 
 ####
@@ -21,14 +21,14 @@ suppressPackageStartupMessages(library(ggplot2))
 ####
 ## ASSIGN ARGUMENTS
 option_list <- list( 
-  make_option("--overlap", default = NULL, 
-              help = "RData file of transcript overlaps [default \"%default\"]"),
-  make_option("--annofile", default = NULL,
-              help = "File with genomic annotation of gene/tx/exon annotation [default \"%default\"]"),
   make_option("--outdir", default = "./output", 
-              help = "Output directory to write transcript overlaps to [default is \"%default\"]"),
+              help = "Output directory [default is \"%default\"]"),
   make_option("--figdir", default = "./figures", 
-              help = "Figure directory to put figures in [default is \"%default\"]"),
+              help = "Figure directory [default is \"%default\"]"),
+  make_option("--scriptdir", default = "./scripts",
+              help = "Scripts directory (to load functions saved in source scripts). [default is \"%default\"]"),
+  make_option("--scratchdir", default = NULL, 
+              help = "Where should intermediate files be saved? If kept as NULL, intermediate files won't be saved. [default \"%default\"]"),
   make_option("--edittable", default = NULL,
               help = "File of cis-NATs from RNA-editing paper (optional) [default \"%default\"]"),
   make_option("--coloctable", default = NULL,
@@ -41,8 +41,44 @@ opt <- parse_args(OptionParser(option_list=option_list))
 
 
 ####
-## DEFINE FUNCTIONS
+## INPUT TESTS
+# Create consistent directory variables
+out_dir <- file.path(opt$outdir)
+script_dir <- file.path(opt$scriptdir)
+fig_dir <- file.path(opt$figdir)
+# Check that the directories exist
+if (!dir.exists(out_dir)) {
+  stop("Output directory does not exist, exiting\n")
+}
+if (!dir.exists(script_dir)) {
+  stop("Script directory does not exist, exiting\n")
+}
+if (!dir.exists(fig_dir)) {
+  stop("Figure directory does not exist, exiting\n")
+}
 
+if (!is.null(opt$scratchdir)) {
+  scratch_dir <- file.path(opt$scratchdir)
+  # Check that scratch directory exists
+  if (!dir.exists(scratch_dir)) {
+    stop("Scratch directory does not exist, exiting\n")
+  }
+}
+
+
+####
+## LOAD SOURCE SCRIPTS
+# n/a
+
+
+####
+## READ IN INPUT FILES
+load(file.path(out_dir, "03_putative_cisNAT_uniqueRegionsOnly_withAluFlag.RData")) # object name from script 03: putative_cisnat
+load(file.path(out_dir, "gene_tx_exon_anno_files.RData")) # object name from script 01: gene_anno, tx_anno, and exon_anno
+
+
+####
+## DEFINE FUNCTIONS
 # get_pair_type() returns the categories of gene pairs, ordered with some priority level (e.g so you don't get
 # both protein_coding__lncRNA and lncRNA__protein_coding as pair types)
 get_pair_type <- function(df = plot_dat, pair_type = "tx", tx_priority = tx_priority) {
@@ -84,47 +120,12 @@ get_pair_type <- function(df = plot_dat, pair_type = "tx", tx_priority = tx_prio
     plot_dat$plus_first <- plot_dat$plus_number <= plot_dat$minus_number
     plot_dat$xcat_gene <- NA
     plot_dat[plot_dat$plus_first, ]$xcat_gene <- paste(as.character(plot_dat[plot_dat$plus_first, ]$plus_gene_type), 
-                                                     as.character(plot_dat[plot_dat$plus_first, ]$minus_gene_type), sep = "__")
+                                                       as.character(plot_dat[plot_dat$plus_first, ]$minus_gene_type), sep = "__")
     plot_dat[!plot_dat$plus_first, ]$xcat_gene <- paste(as.character(plot_dat[!plot_dat$plus_first, ]$minus_gene_type), 
-                                                      as.character(plot_dat[!plot_dat$plus_first, ]$plus_gene_type), sep = "__")
+                                                        as.character(plot_dat[!plot_dat$plus_first, ]$plus_gene_type), sep = "__")
   }
   plot_dat
 }
-
-
-
-
-####
-## INPUT TESTS
-# Check the required arguments (overlaps file) are provided
-if (is.null(opt$overlap)) { 
-  stop("Overlaps file not provided, exiting\n") 
-}
-if (is.null(opt$annofile)) { 
-  stop("Annotation file not provided, exiting\n") 
-}
-
-# Create consistent directory variables
-out_dir <- file.path(opt$outdir)
-fig_dir <- file.path(opt$figdir)
-# Check that directory exists
-if (!dir.exists(out_dir)) {
-  stop("Output directory does not exist, exiting\n")
-}
-if (!dir.exists(fig_dir)) {
-  stop("Figure directory does not exist, exiting\n")
-}
-
-
-####
-## LOAD SOURCE SCRIPTS
-# n/a
-
-
-####
-## READ IN INPUT FILES
-load(file.path(opt$overlap)) # object name from script 03: putative_cisnat
-load(file.path(opt$annofile)) # object name from script 01: gene_anno, tx_anno, and exon_anno
 
 
 ####
