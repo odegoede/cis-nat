@@ -6,6 +6,7 @@ Since RNA editing of “self” RNA prevents MDA5 binding and the subsequent inn
 
 The project's design document (includes dependencies) is [here](https://github.com/odegoede/cis-nat/blob/main/design.md).
 
+
 ## Suggested working directory set-up
 ```
 .
@@ -17,6 +18,7 @@ The project's design document (includes dependencies) is [here](https://github.c
 └── scripts                  # Scripts
 ```
 
+
 ## Run all R scripts with one command
 
 This uses the script cisnat_script_launcher.sh. It runs scripts 01-08, which examine the GTEx editing data, and does not include the scripts examining the pilot data evaluating all detectable editing sites in the genome. 
@@ -26,6 +28,7 @@ To run from working directory:
 ```sh
 scripts/cisnat_script_launcher.sh path/to/work_dir > cisnat_log 2>&1
 ```
+
 
 
 ## Walkthrough for code so far:
@@ -312,6 +315,7 @@ Options:
 Required inputs: gene expression data and GTEx sample information. Key outputs: figures summarizing sites or dsRNAs with editing variation across all tissues, plus figures of examples of interest.
 
 
+
 ## Pilot data examining RNA editing across the whole genome
 
 The pilot data consists of 289 samples where all "A" sites across the genome are assessed for RNA editing, not just the curated list of likely editing sites.
@@ -393,6 +397,7 @@ Options:
                 Show this help message and exit
 ```
 Key output is mostly figures summarizing numbers of informative sites.
+
 
 
 ## Miscellaneous code
