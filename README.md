@@ -252,7 +252,10 @@ Key outputs:
 Third, explored ways to identify sites with interesting variation in editing levels, and to flag sites where the data looks a little bit unreliable.
 
 ```sh
+# Just one tissue:
 $ Rscript scripts/07_example_variation_search.R --tissue $tis --outdir output/ --scriptdir scripts/ --scratchdir scratch/ --figdir figures/ --samplefile data/sampleInfo.RData --tpmfile data/cisnat_gene_tpm.gct.gz
+# Loop through several tissues
+$ for tis in $(cat tissue_names.txt) ; do Rscript scripts/cis-nat/scripts/07_example_variation_search.R --tissue $tis --outdir output/ --scriptdir scripts/ --scratchdir scratch/ --figdir figures/ --samplefile data/sampleInfo.RData --tpmfile data/cisnat_gene_tpm.gct.gz; done
 ```
 ```
 Usage: scripts/07_example_variation_search.R [options]
@@ -396,7 +399,7 @@ Options:
         -h, --help
                 Show this help message and exit
 ```
-Key output is mostly figures summarizing numbers of informative sites.
+Key output is tables of transcript overlaps that contain editing sites found in the pilot dataset that have some measurable editing (pilot_02_putative_cisnat_with_pilotSites.txt and pilot_02_putative_cisnat_with_strictPilotSites.txt), as well as figures summarizing numbers of informative sites.
 
 
 

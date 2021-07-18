@@ -9,8 +9,6 @@
 # example usage:
 # Rscript scripts/07_example_variation_search.R --tissue $tis --outdir output/ --scriptdir scripts/ --scratchdir scratch/ --figdir figures/ --samplefile data/sampleInfo.RData --tpmfile data/cisnat_gene_tpm.gct.gz
 
-# note: only choosing a tissue that I've also got the normalized expression for in a local dir 
-
 ####
 ## SET OPTIONS, LOAD LIBRARIES
 options(stringsAsFactors = F)
@@ -228,7 +226,7 @@ check_low_exp <- function(dsrna, plot_dat, site) {
   # only fill the column if the gene is one of the ones that has some zeroes
   # value is MATCH if presence of editing and presence of expression are synced up (either there's both editLevel and expLevel, or both are zeroes)
   # value is EXP_NO_EDIT if there's expression but no editing (not necessarily a deal breaker, expression could be nuclear or too low to form dsRNA)
-  # value is EDIT_NO_EXP if there's editing when only one transcript is expressed (a deal breaker, suggests only one transcript needed for editing)
+  # value is EDIT_NO_EXP if there's editing when only one transcript is expressed (could be a deal breaker, suggests only one transcript needed for editing)
   if (g1 %in% genes_of_interest) {
     plot_dat[plot_dat[,"edit"] == 0 & plot_dat[,g1] == 0, "gene_one"] <- "MATCH_ZERO"
     plot_dat[plot_dat[,"edit"] > 0 & plot_dat[,g1] > 0, "gene_one"] <- "MATCH_EXP"
@@ -256,6 +254,7 @@ check_low_exp <- function(dsrna, plot_dat, site) {
   else if (any(plot_dat[,"gene_one"] == "MATCH_ZERO") | any(plot_dat[,"gene_two"] == "MATCH_ZERO")) {
     rval <- "PASS"
   }
+  # if somewhere in between, it's neither a flag or a mark of interesting variation
   else {
     rval <- "MODERATE"
   }
@@ -266,35 +265,40 @@ check_low_exp <- function(dsrna, plot_dat, site) {
 check_pos_corr <- function(dsrna, plot_dat, site) {
   g1 <- gene_id_match[gene_id_match$cisnat == unlist(strsplit(dsrna, "__"))[1], ]$gtex[1]
   g2 <- gene_id_match[gene_id_match$cisnat == unlist(strsplit(dsrna, "__"))[2], ]$gtex[1]
-  rval <- "NONE"
+  rv1 <- ""
+  rv2 <- ""
   if (!is.na(g1)) {
+    rv1 <- "NONE"
     res <- cor.test(plot_dat[,"edit"], plot_dat[,g1], alternative = "two.sided", method = "pearson")
     if (res$p.value <= 0.05 & as.numeric(res$estimate) < -0.1) {
-      return("BIG_NEG") # negative correlation is bad and want to flag immediately, doesn't matter what other gene is doing
+      return("BIG_NEG") # negative correlation indicates not a dsRNA relationship, want to flag immediately, doesn't matter what other gene is doing
     }
     else if (res$p.value <= 0.05 & as.numeric(res$estimate) < 0) {
-      rval <- "MINI_NEG"
+      rv1 <- "MINI_NEG"
     }
     else if (res$p.value <= 0.05 & as.numeric(res$estimate) > 0) {
-      rval <- "POS"
+      rv1 <- "POS"
     }
   }
   if (!is.na(g2)) {
+    rv2 <- "NONE"
     res <- cor.test(plot_dat[,"edit"], plot_dat[,g2], alternative = "two.sided", method = "pearson")
     if (res$p.value <= 0.05 & as.numeric(res$estimate) < -0.1) {
-      return("BIG_NEG") # negative correlation is bad and want to flag immediately, doesn't matter what other gene is doing
+      return("BIG_NEG") # negative correlation indicates not a dsRNA relationship, want to flag immediately, doesn't matter what other gene is doing
     }
     else if (res$p.value <= 0.05 & as.numeric(res$estimate) < 0) {
-      rval <- "MINI_NEG"
+      rv2 <- "MINI_NEG"
     }
     else if (res$p.value <= 0.05 & as.numeric(res$estimate) > 0) {
-      rval <- "POS"
+      rv2 <- "POS"
     }
   }
+  rval <- paste(rv1, rv2, sep = "__")
   return(rval)
 }
 
 # check_cov_corr: for check = "cov_corr":
+# correlation of read coverage at an editing site and editing level
 check_cov_corr <- function(dsrna, plot_dat, site) {
   rval <- "NONE"
   res <- cor.test(plot_dat[,"edit"], plot_dat[,"cov"], alternative = "two.sided", method = "pearson")
@@ -327,7 +331,7 @@ cisnat_site_check <- function(sites_set) {
 var_type_check <- function(var_sites_set) {
   var_sites <- unlist(strsplit(var_sites_set, ";"))
   rval <- "variable"
-  if (any(cand_edit[cand_edit$site_id %in% var_sites, ]$pos_corr_check == "POS")) {
+  if (any(grepl("POS", cand_edit[cand_edit$site_id %in% var_sites, ]$pos_corr_check))) {
     rval <- c("pos_tpm_corr", rval)
   }
   if (any(cand_edit[cand_edit$site_id %in% var_sites, ]$low_exp_check == "PASS")) {
@@ -410,6 +414,7 @@ cand_edit <- edit_df_tis[edit_df_tis$n_cov_tenPlus >= samp_thresh, ]
 summary(cand_edit$coefVar)
 cand_edit <- cand_edit[which(cand_edit$coefVar > 0), ]
 cand_edit <- cand_edit[order(cand_edit$med_edit, decreasing = T), ]
+cand_edit$n_edit_moreThanZero <- cand_edit$n_cov_tenPlus - cand_edit$n_edit_zero
 
 
 ####
@@ -447,9 +452,9 @@ cand_edit <- cand_edit[!cand_edit$low_exp_check == "BIG_FAIL", ]
 # test plot a few that passed
 for (i in c(1:3)) {
   print(paste("TYPE 1 PLOT", i))
-  gp <- check_site(cand_edit[cand_edit$low_exp_check == "PASS",]$site_id[i], check = "plot")
-  ggsave(gp, filename = file.path(fig_dir, paste0("07_", tis, "low_exp_site", i, "f.png")), width = 10, height = 5, units = "in")
-  ggsave(gp, filename = file.path(fig_dir, paste0("07_", tis, "low_exp_site", i, "f.pdf")), width = 10, height = 5, units = "in")
+  gp <- check_site(cand_edit[cand_edit$low_exp_check == "PASS" & cand_edit$n_edit_moreThanZero >= 25,]$site_id[i], check = "plot")
+  ggsave(gp, filename = file.path(fig_dir, paste0("07_", tis, "_01_low_exp_site", i, "f.png")), width = 10, height = 5, units = "in")
+  ggsave(gp, filename = file.path(fig_dir, paste0("07_", tis, "_01_low_exp_site", i, "f.pdf")), width = 10, height = 5, units = "in")
 }
 
 
@@ -462,7 +467,12 @@ print("TYPE 2 SITES")
 check_site(site = cand_edit$site_id[1], check = "pos_corr")
 sapply(cand_edit$site_id[1:5], check_site, check = "pos_corr")
 cand_edit$pos_corr_check <- as.character(sapply(cand_edit$site_id, check_site, check = "pos_corr"))
-table(cand_edit$pos_corr_check) # 157 BIG_NEG, 76 MINI_NEG, 629 POS, the rest 2120 NONE
+table(cand_edit$pos_corr_check) 
+# BIG_NEG   MINI_NEG__MINI_NEG     MINI_NEG__NONE      MINI_NEG__POS     NONE__MINI_NEG         NONE__NONE 
+# 157                  3                 37                  8                 26               2030 
+# NONE__POS      POS__MINI_NEG          POS__NONE           POS__POS 
+# 258                  7                 201                 144
+
 
 # to consider: removing candidate edit sites with big negative correlations (didn't do this time)
 # bigneg was based on looking at all significant corr coefs in this tissue; 
@@ -471,9 +481,9 @@ table(cand_edit$pos_corr_check) # 157 BIG_NEG, 76 MINI_NEG, 629 POS, the rest 21
 # test plot a few that passed
 for (i in c(1:3)) {
   print(paste("TYPE 2 PLOT", i))
-  gp <- check_site(cand_edit[cand_edit$pos_corr_check == "POS",]$site_id[i], check = "plot")
-  ggsave(gp, filename = file.path(fig_dir, paste0("07_", tis, "pos_corr_site", i, "f.png")), width = 10, height = 5, units = "in")
-  ggsave(gp, filename = file.path(fig_dir, paste0("07_", tis, "pos_corr_site", i, "f.pdf")), width = 10, height = 5, units = "in")
+  gp <- check_site(cand_edit[grepl("POS", cand_edit$pos_corr_check) & cand_edit$n_edit_moreThanZero >= 25,]$site_id[i], check = "plot")
+  ggsave(gp, filename = file.path(fig_dir, paste0("07_", tis, "_02_pos_corr_site", i, "f.png")), width = 10, height = 5, units = "in")
+  ggsave(gp, filename = file.path(fig_dir, paste0("07_", tis, "_02_pos_corr_site", i, "f.pdf")), width = 10, height = 5, units = "in")
 }
 
 
@@ -506,12 +516,12 @@ cisnat_withSites[is.na(cisnat_withSites$var_sites), ]$n_var_sites <- 0
 plot_dat <- as.data.frame(t(table(cisnat_withSites$n_var_sites)))
 plot_dat$Var2 <- as.integer(as.character(plot_dat$Var2))
 g <- ggplot(plot_dat, aes(x = Var2, y= as.numeric(Freq))) + geom_col() + theme_bw()
-ggsave(g, filename = file.path(fig_dir, paste0("07_z", tis, "dsrnas_numVarSites.png")), width = 6, height = 6, units = "in")
-ggsave(g, filename = file.path(fig_dir, paste0("07_z", tis, "dsrnas_numVarSites.pdf")), width = 6, height = 6, units = "in")
+ggsave(g, filename = file.path(fig_dir, paste0("07_", tis, "_z01_dsrnas_numVarSites.png")), width = 6, height = 6, units = "in")
+ggsave(g, filename = file.path(fig_dir, paste0("07_", tis, "_z01_dsrnas_numVarSites.pdf")), width = 6, height = 6, units = "in")
 plot_dat <- plot_dat[-1,]
 g <- ggplot(plot_dat, aes(x = Var2, y= as.numeric(Freq))) + geom_col() + theme_bw()
-ggsave(g, filename = file.path(fig_dir, paste0("07_z", tis, "dsrnas_numVarSites_noZero.png")), width = 6, height = 6, units = "in")
-ggsave(g, filename = file.path(fig_dir, paste0("07_z", tis, "dsrnas_numVarSites_noZero.pdf")), width = 6, height = 6, units = "in")
+ggsave(g, filename = file.path(fig_dir, paste0("07_", tis, "_z02_dsrnas_numVarSites_noZero.png")), width = 6, height = 6, units = "in")
+ggsave(g, filename = file.path(fig_dir, paste0("07_", tis, "_z02_dsrnas_numVarSites_noZero.pdf")), width = 6, height = 6, units = "in")
 print("NUMVARSITES-IN-CISNAT PLOTS DONE")
 
 
@@ -519,20 +529,16 @@ cisnat_with_var <- cisnat_withSites[cisnat_withSites$n_var_sites > 0, ]
 cisnat_with_var$var_types <- as.character(sapply(cisnat_with_var$var_sites, var_type_check))
 table(cisnat_with_var$var_types)
 # low_exp;pos_tpm_corr;variable   low_exp;variable         pos_tpm_corr;variable            variable 
-# 22                               19                           361                           310 
+# 22                               19                           322                           349 
 
 cisnat_with_var$site_flags <- as.character(sapply(cisnat_with_var$var_sites, flag_check))
 table(cisnat_with_var$site_flags)
 # NA                 neg_coverage_corr                neg_tpm_corr      neg_tpm_corr;neg_coverage_corr 
-# 416                             59                       137                            100 
+# 454                             60                       99                            99 
 
 cisnat_with_var <- cisnat_with_var[,c("chr", "minus_gene", "minus_symbol", "minus_gene_type", "plus_gene", "plus_symbol", "plus_gene_type", "minus_tx", "minus_tx_type", "plus_tx", "plus_tx_type", "minus_exons_in_overlap", "plus_exons_in_overlap", "all_overlap_widths", "longest_overlap_width", "longest_overlap_start", "longest_overlap_end", "multi_exon_overlap", "alu_overlap", "n_sites", "n_var_sites", "var_types", "site_flags", "sites", "var_sites")]
 print("CISNATS HAVE BEEN FILTERED")
 
-
-####
-## Flag any dsrnas with IRAlu overlaps
-# (is already in the df, since its built off of cisnat_withSites df)
 
 
 ####
@@ -541,8 +547,8 @@ to_plot <- c(1, sample(c(2:nrow(cisnat_with_var)), size = 4, replace = F))
 for (i in to_plot) {
   print(paste("PLOT DSRNA EXAMPLE", i))
   gp <- dsrna_boxplot(rownames(cisnat_with_var)[i])
-  ggsave(gp, filename = file.path(fig_dir, paste0("07_", tis, "dsrna_examples", i, "f.png")), width = 10, height = 10, units = "in")
-  ggsave(gp, filename = file.path(fig_dir, paste0("07_", tis, "dsrna_examples", i, "f.pdf")), width = 10, height = 10, units = "in")
+  ggsave(gp, filename = file.path(fig_dir, paste0("07_", tis, "_03_dsrna_examples", i, "f.png")), width = 10, height = 10, units = "in")
+  ggsave(gp, filename = file.path(fig_dir, paste0("07_", tis, "_03_dsrna_examples", i, "f.pdf")), width = 10, height = 10, units = "in")
 }
 
 

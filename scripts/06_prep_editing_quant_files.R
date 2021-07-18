@@ -297,7 +297,6 @@ for (tis in unique(exp_df$tissue)) {
   print(tis)
   print(date())
   samps <- unlist(strsplit(tissue_sample_match[tissue_sample_match$work_tissue == tis, ]$samples, ","))
-  # coverage
   tpm_temp <- tpm_dat[, samps]
   tmin <- apply(tpm_temp, 1, min, na.rm = T)
   exp_df[exp_df$tissue == tis, ]$min_tpm <- tmin[genes]
@@ -312,7 +311,7 @@ for (tis in unique(exp_df$tissue)) {
   tsd <- apply(tpm_temp, 1, sd, na.rm = T)
   exp_df[exp_df$tissue == tis, ]$sd_all <- tsd[genes]
   tpm_temp_filt <- tpm_temp
-  tpm_temp_filt[tpm_temp == 10] <- NA # block out tpm values of zerp
+  tpm_temp_filt[tpm_temp == 0] <- NA # block out tpm values of zero
   tsddetect <- apply(tpm_temp_filt, 1, sd, na.rm = T)
   exp_df[exp_df$tissue == tis, ]$sd_detected <- tsddetect[genes]
 }
@@ -321,7 +320,7 @@ exp_df$coefVar_all <- exp_df$sd_all/exp_df$mean_tpm
 exp_df$coefVar_detected <- exp_df$sd_detected/exp_df$mean_tpm
 rownames(gene_id_match) <- gene_id_match$gtex
 exp_df$cisnat_gene <- gene_id_match[exp_df$gene_id, ]$cisnat
-summary(exp_df) # a few thousand NAs in the coefVar_all - probably 0/0 division
+summary(exp_df) # for the NAs in coefVar and sd fields: 7422 rows have no samples with TPM > 0 (NAs in sd_detected, coefVar_all, and coefVar_detected), and 3009 rows have one sample with TPM > 0 (NAs in sd_detected and coefVar_detected)
 save(exp_df, file = file.path(out_dir, "06_exp_df.RData"))
 
 

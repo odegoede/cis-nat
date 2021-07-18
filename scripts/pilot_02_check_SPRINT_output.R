@@ -75,8 +75,11 @@ load("data/sample_tissue_match.RData") # R object from script 06, named: tissue_
 load(file.path(opt$samplefile))
 sample.info <- sample.info[sample.info$ANALYTE_TYPE == "RNA:Total RNA", ]
 
-load(file.path(out_dir, "03_putative_cisNAT_uniqueRegionsOnly_withAluFlag.RData")) # object name from script 03: putative_cisnat
+load(file.path(out_dir, "03_putative_cisNAT_uniqueRegionsOnly_withAluFlag.RData")) # object name from script 03: putative_cisnat 
+# ^ (note: expanding back out to this file rather than 05, because 05 was filtered based on presence of GTEx editing data and this 
+# is a fresh exploration of pilot data)
 load(file.path(out_dir, "05_cisNAT_with_RNAedit.RData")) # two objects from script 05, named: cisnat_withSites, cisnat_withCluster
+# ^ (note: this 05 file is still included for comparison of what is detected with GTEx data versus pilot data)
 
 load("data/full_pilot/filtered_pilot_data.rds") # R objects from pilot_01 script: _filt is evidence of editing in at least 1 sample; _strict_filt is evidence of editing in at least 2 samples from the same tissue
 
@@ -115,6 +118,8 @@ put_cisnat_grange <- makeGRangesFromDataFrame(temp, seqnames.field = "chr", star
                                               end.field = "longest_overlap_end", keep.extra.columns = T)
 
 ## pilot
+# recall sites (1,229,653 total) had to have real, measured values in more than one sample (even if that measurement's editing level was 0), and
+# some non-zero editing level in at least one sample
 put_cisnat_to_pilotSite <- findOverlaps(put_cisnat_grange, pilot_site_grange, select = "all", ignore.strand = T)
 put_cisnat_ind <- queryHits(put_cisnat_to_pilotSite)
 site_ind <- subjectHits(put_cisnat_to_pilotSite)
@@ -144,12 +149,20 @@ for (i in rownames(cisnat_with_pilotSites)) {
 }
 cisnat_with_pilotSites$n_sites <- as.integer(unlist(lapply(strsplit(cisnat_with_pilotSites$pilot_sites, ";"), length)))
 
-# how many are also in cisnat_withSites
+# how many are also in cisnat_withSites?
 summary(rownames(cisnat_with_pilotSites) %in% rownames(cisnat_withSites)) # 76 are shared, 406 of pilot cisnats are not in GTEx (and around 1000 are in GTEx only)
+# add this as a column
+cisnat_with_pilotSites$has_site_in_gtexAnalysis <- rownames(cisnat_with_pilotSites) %in% rownames(cisnat_withSites)
 
+# save these results
+save(cisnat_with_pilotSites, file = file.path(out_dir, "pilot_02_putative_cisnat_with_pilotSites.RData"))
+to_write <- cisnat_with_pilotSites[,c(1:19, 22, 21, 20)]
+write.table(to_write, file = file.path(out_dir, "pilot_02_putative_cisnat_with_pilotSites.txt"), 
+            row.names = F, col.names = T, quote = F, sep = "\t")
 
 
 ## strict pilot
+# recall strict sites (84,938 total) require that at least 2 samples of the same tissue type have editing values (not just at least 2 samples overall)
 put_cisnat_to_strictPilotSite <- findOverlaps(put_cisnat_grange, strict_pilot_site_grange, select = "all", ignore.strand = T)
 put_cisnat_ind <- queryHits(put_cisnat_to_strictPilotSite)
 site_ind <- subjectHits(put_cisnat_to_strictPilotSite)
@@ -176,7 +189,14 @@ cisnat_with_strictPilotSites$n_sites <- as.integer(unlist(lapply(strsplit(cisnat
 
 # how many are also in cisnat_withSites
 summary(rownames(cisnat_with_strictPilotSites) %in% rownames(cisnat_withSites)) # 18 are shared, 61 of strict pilot cisnats are not in GTEx
+# add this as a column
+cisnat_with_strictPilotSites$has_site_in_gtexAnalysis <- rownames(cisnat_with_strictPilotSites) %in% rownames(cisnat_withSites)
 
+# save these results
+save(cisnat_with_strictPilotSites, file = file.path(out_dir, "pilot_02_putative_cisnat_with_strictPilotSites.RData"))
+to_write <- cisnat_with_strictPilotSites[,c(1:19, 22, 21, 20)]
+write.table(to_write, file = file.path(out_dir, "pilot_02_putative_cisnat_with_strictPilotSites.txt"), 
+            row.names = F, col.names = T, quote = F, sep = "\t")
 
 
 

@@ -243,8 +243,8 @@ plot_dat$dsrna <- as.character(plot_dat$dsrna)
 g <- ggplot(plot_dat, aes(x = num_tissues)) + geom_bar() + 
   scale_x_continuous(breaks = seq(0,50,5), minor_breaks = c(0:49)) + 
   ggtitle("Variable dsRNAs, all, tx_pairs") + theme_bw()
-ggsave(g, file = file.path(fig_dir, "08_num_tis_vardsrna_all_tx.png"), width = 7, height = 7, units = "in")
-ggsave(g, file = file.path(fig_dir, "08_num_tis_vardsrna_all_tx.pdf"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_01_num_tis_vardsrna_all_tx.png"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_01_num_tis_vardsrna_all_tx.pdf"), width = 7, height = 7, units = "in")
 
 # (unique gene pairs, all)
 temp <- var_dsrna_allTissues
@@ -256,8 +256,8 @@ plot_dat$gene_pair <- as.character(plot_dat$gene_pair)
 g <- ggplot(plot_dat, aes(x = num_tissues)) + geom_bar() + 
   scale_x_continuous(breaks = seq(0,50,5), minor_breaks = c(0:49)) + 
   ggtitle("Variable dsRNAs, all, gene_pairs") + theme_bw()
-ggsave(g, file = file.path(fig_dir, "08_num_tis_vardsrna_all_gene.png"), width = 7, height = 7, units = "in")
-ggsave(g, file = file.path(fig_dir, "08_num_tis_vardsrna_all_gene.pdf"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_02_num_tis_vardsrna_all_gene.png"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_02_num_tis_vardsrna_all_gene.pdf"), width = 7, height = 7, units = "in")
 
 # (unique tx pairs, >1 variable sites)
 nrow(var_filt <- var_dsrna_allTissues[var_dsrna_allTissues$n_var_sites > 1, ]) # 26,509
@@ -267,8 +267,8 @@ plot_dat$dsrna <- as.character(plot_dat$dsrna)
 g <- ggplot(plot_dat, aes(x = num_tissues)) + geom_bar() + 
   scale_x_continuous(breaks = seq(0,50,5), minor_breaks = c(0:49)) + 
   ggtitle("Variable dsRNAs, more than 1 var site, tx_pairs") + theme_bw()
-ggsave(g, file = file.path(fig_dir, "08_num_tis_vardsrna_moreThanOneSite_tx.png"), width = 7, height = 7, units = "in")
-ggsave(g, file = file.path(fig_dir, "08_num_tis_vardsrna_moreThanOneSite_tx.pdf"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_03_num_tis_vardsrna_moreThanOneSite_tx.png"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_03_num_tis_vardsrna_moreThanOneSite_tx.pdf"), width = 7, height = 7, units = "in")
 
 # (unique gene pairs, >1 variable sites)
 temp <- var_filt
@@ -280,8 +280,8 @@ plot_dat$gene_pair <- as.character(plot_dat$gene_pair)
 g <- ggplot(plot_dat, aes(x = num_tissues)) + geom_bar() + 
   scale_x_continuous(breaks = seq(0,50,5), minor_breaks = c(0:49)) + 
   ggtitle("Variable dsRNAs, more than 1 var site, gene_pairs") + theme_bw()
-ggsave(g, file = file.path(fig_dir, "08_num_tis_vardsrna_moreThanOneSite_gene.png"), width = 7, height = 7, units = "in")
-ggsave(g, file = file.path(fig_dir, "08_num_tis_vardsrna_moreThanOneSite_gene.pdf"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_04_num_tis_vardsrna_moreThanOneSite_gene.png"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_04_num_tis_vardsrna_moreThanOneSite_gene.pdf"), width = 7, height = 7, units = "in")
 
 
 
