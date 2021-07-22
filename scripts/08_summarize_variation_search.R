@@ -78,7 +78,7 @@ if (!is.null(opt$scratchdir)) {
 
 ####
 ## LOAD SOURCE SCRIPTS
-source("scripts/cis-nat/scripts/source_temp_unzip.R")
+source(file.path(script_dir, "source_temp_unzip.R"))
 
 
 ####
@@ -191,15 +191,13 @@ for (tis in tissue_sample_match$work_tissue) {
   # site file
   read_file <- file.path(out_dir, paste0("07_perTissue_variation/", tis, "_sitesWithVariation.txt"))
   temp <- read.table(file = read_file, header = T)
-  orig_cols <- colnames(temp)
-  temp$tissue <- tis
-  temp <- temp[,c("tissue", orig_cols)]
   var_sites_allTissues <- rbind(var_sites_allTissues, temp)
 }
+save(var_dsrna_allTissues, var_sites_allTissues, file = file.path(out_dir, "08_allTissues_variation_summaryTables.RData"))
 
 
 ####
-## How many dsRNAs with variable sites are there per dsRNA?
+## How many dsRNAs with variable sites are there per tissue?
 # total variable dsRNAs:
 nrow(var_dsrna_allTissues) # 33,449
 length(unique(paste(var_dsrna_allTissues$minus_tx, var_dsrna_allTissues$plus_tx, sep = "__"))) # 858 tx pairs
@@ -230,11 +228,34 @@ summary(is.na(temp$alu_overlap)) # 394 do not overlap IRAlu, 98 do
 
 
 ####
+## Plot: number of variable dsRNAs per tissue, number of variable sites per tissue
+# dsrnas (fill is number of VARIABLE sites within the dsrna)
+plot_dat <- var_dsrna_allTissues
+plot_dat$n_var_sites_cat <- "1"
+plot_dat[plot_dat$n_var_sites > 1 & plot_dat$n_var_sites <= 5, ]$n_var_sites_cat <- "2-5"
+plot_dat[plot_dat$n_var_sites > 5 & plot_dat$n_var_sites <= 10, ]$n_var_sites_cat <- "6-10"
+plot_dat[plot_dat$n_var_sites > 10 & plot_dat$n_var_sites <= 25, ]$n_var_sites_cat <- "11-25"
+plot_dat[plot_dat$n_var_sites > 25 & plot_dat$n_var_sites <= 50, ]$n_var_sites_cat <- "26-50"
+plot_dat[plot_dat$n_var_sites > 50 & plot_dat$n_var_sites <= 100, ]$n_var_sites_cat <- "51-100"
+plot_dat[plot_dat$n_var_sites > 100, ]$n_var_sites_cat <- "101+"
+plot_dat$n_var_sites_cat <- factor(plot_dat$n_var_sites_cat, levels = rev(c("1", "2-5", "6-10", "11-25", "26-50", "51-100", "101+")))
+g <- ggplot(plot_dat, aes(x = tissue, fill = n_var_sites_cat)) + geom_bar() + 
+  theme_bw() + xlab(NULL) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+ggsave(g, file = file.path(fig_dir, "08_01_number_at_overlapLengthThresholds_withSites.png"), width = 6, height = 5)
+ggsave(g, file = file.path(fig_dir, "08_01_number_at_overlapLengthThresholds_withSites.pdf"), width = 6, height = 5)
+
+
+
+
+
+####
 ## Plot: dsRNAs by number of tissues observed in
 var_dsrna_allTissues$dsrna_id <- paste(var_dsrna_allTissues$minus_tx, var_dsrna_allTissues$plus_tx, sep = "__")
 var_dsrna_allTissues$gene_pair_id <- paste(var_dsrna_allTissues$minus_gene, var_dsrna_allTissues$plus_gene, sep = "__")
 # sanity check: no tx pair is represented >49 (the number of tissues)
 summary(as.numeric(table(var_dsrna_allTissues$dsrna_id))) # good, max is 49
+table(as.numeric(table(var_dsrna_allTissues$dsrna_id))) # of the 858 tx pairs, 427 have a variable site in all tissues; 619 have a variable site in at least 40 tissues
 
 # (unique tx pairs, all)
 plot_dat <- data.frame(t(table(var_dsrna_allTissues$dsrna_id)))
@@ -243,8 +264,8 @@ plot_dat$dsrna <- as.character(plot_dat$dsrna)
 g <- ggplot(plot_dat, aes(x = num_tissues)) + geom_bar() + 
   scale_x_continuous(breaks = seq(0,50,5), minor_breaks = c(0:49)) + 
   ggtitle("Variable dsRNAs, all, tx_pairs") + theme_bw()
-ggsave(g, file = file.path(fig_dir, "08_01_num_tis_vardsrna_all_tx.png"), width = 7, height = 7, units = "in")
-ggsave(g, file = file.path(fig_dir, "08_01_num_tis_vardsrna_all_tx.pdf"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_03_num_tis_vardsrna_all_tx.png"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_03_num_tis_vardsrna_all_tx.pdf"), width = 7, height = 7, units = "in")
 
 # (unique gene pairs, all)
 temp <- var_dsrna_allTissues
@@ -256,8 +277,25 @@ plot_dat$gene_pair <- as.character(plot_dat$gene_pair)
 g <- ggplot(plot_dat, aes(x = num_tissues)) + geom_bar() + 
   scale_x_continuous(breaks = seq(0,50,5), minor_breaks = c(0:49)) + 
   ggtitle("Variable dsRNAs, all, gene_pairs") + theme_bw()
-ggsave(g, file = file.path(fig_dir, "08_02_num_tis_vardsrna_all_gene.png"), width = 7, height = 7, units = "in")
-ggsave(g, file = file.path(fig_dir, "08_02_num_tis_vardsrna_all_gene.pdf"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_04_num_tis_vardsrna_all_gene.png"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_04_num_tis_vardsrna_all_gene.pdf"), width = 7, height = 7, units = "in")
+
+# (expression distribution of genes involved in overlaps with RNA editing sites)
+# (expression threshold: detected (TPM>0) in at least 25% of samples)
+genes <- unique(c(var_dsrna_allTissues$minus_gene, var_dsrna_allTissues$plus_gene))
+gtex_genes <- gene_id_match[gene_id_match$cisnat %in% genes, ]$gtex
+temp <- exp_df
+temp <- temp[temp$gene_id %in% gtex_genes, ]
+temp <- temp[temp$med_tpm >= 0.1, ]
+plot_dat <- data.frame(gene = names(table(temp$gene_id)),
+                       num_tissues = as.numeric(table(temp$gene_id)))
+g <- ggplot(plot_dat, aes(x = num_tissues)) + geom_bar() + 
+  scale_x_continuous(breaks = seq(0,50,5), minor_breaks = c(0:49)) + 
+  ggtitle("Number of tissues expressing genes in variable dsRNAs, all (exp = median TPM >= 0.1)") + theme_bw()
+ggsave(g, file = file.path(fig_dir, "08_03_num_tis_expressingGenesIn_vardsrna_all.png"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_03_num_tis_expressingGenesIn_vardsrna_all.pdf"), width = 7, height = 7, units = "in")
+
+
 
 # (unique tx pairs, >1 variable sites)
 nrow(var_filt <- var_dsrna_allTissues[var_dsrna_allTissues$n_var_sites > 1, ]) # 26,509
@@ -267,8 +305,8 @@ plot_dat$dsrna <- as.character(plot_dat$dsrna)
 g <- ggplot(plot_dat, aes(x = num_tissues)) + geom_bar() + 
   scale_x_continuous(breaks = seq(0,50,5), minor_breaks = c(0:49)) + 
   ggtitle("Variable dsRNAs, more than 1 var site, tx_pairs") + theme_bw()
-ggsave(g, file = file.path(fig_dir, "08_03_num_tis_vardsrna_moreThanOneSite_tx.png"), width = 7, height = 7, units = "in")
-ggsave(g, file = file.path(fig_dir, "08_03_num_tis_vardsrna_moreThanOneSite_tx.pdf"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_05_num_tis_vardsrna_moreThanOneSite_tx.png"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_05_num_tis_vardsrna_moreThanOneSite_tx.pdf"), width = 7, height = 7, units = "in")
 
 # (unique gene pairs, >1 variable sites)
 temp <- var_filt
@@ -280,8 +318,8 @@ plot_dat$gene_pair <- as.character(plot_dat$gene_pair)
 g <- ggplot(plot_dat, aes(x = num_tissues)) + geom_bar() + 
   scale_x_continuous(breaks = seq(0,50,5), minor_breaks = c(0:49)) + 
   ggtitle("Variable dsRNAs, more than 1 var site, gene_pairs") + theme_bw()
-ggsave(g, file = file.path(fig_dir, "08_04_num_tis_vardsrna_moreThanOneSite_gene.png"), width = 7, height = 7, units = "in")
-ggsave(g, file = file.path(fig_dir, "08_04_num_tis_vardsrna_moreThanOneSite_gene.pdf"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_06_num_tis_vardsrna_moreThanOneSite_gene.png"), width = 7, height = 7, units = "in")
+ggsave(g, file = file.path(fig_dir, "08_06_num_tis_vardsrna_moreThanOneSite_gene.pdf"), width = 7, height = 7, units = "in")
 
 
 
@@ -338,3 +376,19 @@ ggsave(gp, file = file.path(fig_dir, "08_zexample_dsrna_all49tissues_noIRAluOver
 ggsave(gp, file = file.path(fig_dir, "08_zexample_dsrna_all49tissues_noIRAluOverlap_ENST00000357235_ENST00000368926.pdf"), width = 7, height = 10, units = "in")
 
 
+## dsrna that is a lnc combo
+pc_lnc <- common_dat
+pc_lnc$minus_tx_type <- putative_cisnat[pc_lnc$dsrna, ]$minus_tx_type
+pc_lnc$plus_tx_type <- putative_cisnat[pc_lnc$dsrna, ]$plus_tx_type
+pc_lnc <- pc_lnc[pc_lnc$minus_tx_type == "lncRNA" | pc_lnc$plus_tx_type == "lncRNA",]
+for (i in c(1:nrow(pc_lnc))) {
+  ds <- pc_lnc$dsrna[i]
+  p1 <- dsrna_boxplot(ds, tissue = "all")
+  p2 <- dsrna_boxplot(ds, tissue = "Adipose_Subcutaneous")
+  p3 <- dsrna_boxplot(ds, tissue = "Muscle_Skeletal")
+  p4 <- dsrna_boxplot(ds, tissue = "Brain_Cerebellum")
+  p5 <- tpm_boxplot(ds)
+  gp <- (p1 / p2 / p3 / p4 / p5 + plot_layout(heights = c(1,1,1,1,2)))
+  ggsave(gp, file = file.path(fig_dir, paste0("08_yexample_dsrna_all49tissues_noIRAluOverlap_", ds, ".png")), width = 7, height = 10, units = "in")
+  ggsave(gp, file = file.path(fig_dir, paste0("08_yexample_dsrna_all49tissues_noIRAluOverlap_", ds, ".pdf")), width = 7, height = 10, units = "in")
+}

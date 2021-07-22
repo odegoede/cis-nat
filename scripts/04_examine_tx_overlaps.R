@@ -155,7 +155,7 @@ tx_priority <- c("protein_coding", "lncRNA", "processed_transcript", "retained_i
                  "non_stop_decay", "pseudogene", "small_RNA", "other")
 
 ## Unique tx_pairs, transcript type
-plot_dat <- putative_cisnat
+nrow(plot_dat <- putative_cisnat) # 15,986 unique tx pairs
 # get pair types:
 plot_dat <- get_pair_type(df = plot_dat, pair_type = "tx", tx_priority = tx_priority)
 length(unique(plot_dat$xcat_tx)) # 37
@@ -177,7 +177,7 @@ ggsave(g, file = file.path(fig_dir, "04_01_overlap_regions_transcript_types.pdf"
 plot_dat <- putative_cisnat
 # filter to unique gene pairs (putative_cisnat is unique tx_pairs)
 plot_dat$gene_pair <- paste(plot_dat$minus_gene, plot_dat$plus_gene, sep = "__")
-plot_dat <- plot_dat[!duplicated(plot_dat$gene_pair), ]
+nrow(plot_dat <- plot_dat[!duplicated(plot_dat$gene_pair), ]) # 6,155 unique gene pairs
 # get pair types:
 plot_dat <- get_pair_type(df = plot_dat, pair_type = "gene", tx_priority = tx_priority)
 length(unique(plot_dat$xcat_gene)) # 15

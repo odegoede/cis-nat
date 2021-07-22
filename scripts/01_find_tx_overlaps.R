@@ -262,7 +262,7 @@ if (opt$keepanno == "both") {
 ## Criteria for overlaps:
 # 1. transcripts come from opposite strands
 # 2. have at least 100 bp *continuous* overlap
-# REMOVED CRITERION 03/19/2021: transcripts either have good transcript support level scores (TSL 1-3), 
+# REMOVED THIS CRITERION 03/19/2021: transcripts either have good transcript support level scores (TSL 1-3), 
 #    or are the transcripts with the most evidence for their gene
 #    (have now realized that unsupported transcripts will filter themselves out through lack of 
 #    hyperediting in RNA-seq data)

@@ -6,9 +6,10 @@
 #SBATCH --time=24:00:00
 #SBATCH --mem=8G
 
-# to run from a the command line with a log file: scripts/cisnat_script_launcher.sh path/to/work_dir > cisnat_log 2>&1
+# to run from a the command line with a log file: scripts/cisnat_script_launcher.sh path/to/work_dir tissue_names.txt > cisnat_log 2>&1
 
 WORK_DIR=$1
+TISSUE_LIST=$2
 
 cd $WORK_DIR
 module load r/3.6
@@ -26,7 +27,7 @@ Rscript scripts/05_check_editing_sites.R --outdir output/ --scriptdir scripts/ -
 echo "Starting Script 06" && date &&
 Rscript scripts/06_check_editing_quantification.R --outdir output/ --scriptdir scripts/ --scratchdir scratch/ --figdir figures/ --samplefile data/sampleInfo.RData --editcoverage data/gtex_edit/coverage_matrix.txt.gz --editlevel data/gtex_edit/editLevel_matrix.txt.gz --tpmfile data/cisnat_gene_tpm.gct.gz --gtexanno data/rnaseqc_genes_info.RData &&
 echo "Starting Script 07" && date &&
-Rscript scripts/07_example_variation_search.R --tissue $tis --outdir output/ --scriptdir scripts/ --scratchdir scratch/ --figdir figures/ --samplefile data/sampleInfo.RData --tpmfile data/cisnat_gene_tpm.gct.gz &&
+for tis in $(cat tissue_names.txt) ; do Rscript scripts/07_example_variation_search.R --tissue $tis --outdir output/ --scriptdir scripts/ --scratchdir scratch/ --figdir figures/ --samplefile data/sampleInfo.RData --tpmfile data/cisnat_gene_tpm.gct.gz ; done &&
 echo "Starting Script 08" && date &&
 Rscript scripts/08_summarize_variation_search.R --outdir output/ --scriptdir scripts/ --scratchdir scratch/ --figdir figures/ --samplefile data/sampleInfo.RData --tpmfile data/cisnat_gene_tpm.gct.gz &&
 echo "Scripts done" && date

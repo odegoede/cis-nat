@@ -96,6 +96,7 @@ enough_sites_edit <- function(in_table, tis, n_sample) {
 }
 
 
+
 ####
 ## Get all editing sites across all files
 total_sites <- c()
@@ -112,6 +113,15 @@ length(total_sites) # 2,330,470
 length(sample_names) # 289
 
 
+
+####
+## Plot number of samples / tissue
+plot_dat <- data.frame(samps = paste0("GTEX", sub(".*GTEX", "", sample_names)),
+                       tissue = sub("_GTEX.*", "", sample_names))
+g <- ggplot(plot_dat, aes(x = tissue)) + geom_bar() + theme_bw()
+# ^ not a very cool plot; nearly all tissues have 6 samples
+table(plot_dat$tissue)[table(plot_dat$tissue) != 6]
+# Kidney is 4, salivary gland is 4, small intestine is 5
 
 ####
 ## Load and combine each tissue file

@@ -123,7 +123,53 @@ colnames(indiv_quant) <- c("chr", "position", "coverage", "editedreads", "editle
 
 ####
 ## DEFINE FUNCTIONS
-# (no new functions in this script)
+# get_pair_type() returns the categories of gene pairs, ordered with some priority level (e.g so you don't get
+# both protein_coding__lncRNA and lncRNA__protein_coding as pair types)
+get_pair_type <- function(df = plot_dat, pair_type = "tx", tx_priority = tx_priority) {
+  if (!pair_type %in% c("tx", "gene")) {stop("pair_type isn't \"tx\" or \"gene\"")}
+  pseudo_types <- c("pseudogene", "transcribed_processed_pseudogene", "transcribed_unitary_pseudogene", 
+                    "transcribed_unprocessed_pseudogene", "processed_pseudogene", "unitary_pseudogene", 
+                    "polymorphic_pseudogene", "unprocessed_pseudogene", "IG_V_pseudogene", "rRNA_pseudogene")
+  small_types <- c("scaRNA", "miRNA", "snRNA", "snoRNA")
+  other_types <- c("misc_RNA", "TEC", "TR_C_gene")
+  if (pair_type == "tx") {
+    plot_dat[plot_dat$plus_tx_type %in% pseudo_types, ]$plus_tx_type <- "pseudogene"
+    plot_dat[plot_dat$plus_tx_type %in% small_types, ]$plus_tx_type <- "small_RNA"
+    plot_dat[plot_dat$plus_tx_type %in% other_types, ]$plus_tx_type <- "other"
+    plot_dat[plot_dat$minus_tx_type %in% pseudo_types, ]$minus_tx_type <- "pseudogene"
+    plot_dat[plot_dat$minus_tx_type %in% small_types, ]$minus_tx_type <- "small_RNA"
+    plot_dat[plot_dat$minus_tx_type %in% other_types, ]$minus_tx_type <- "other"
+    plot_dat$plus_tx_type <- factor(plot_dat$plus_tx_type, levels = tx_priority, ordered = T)
+    plot_dat$minus_tx_type <- factor(plot_dat$minus_tx_type, levels = tx_priority, ordered = T)
+    plot_dat$minus_number <- as.numeric(plot_dat$minus_tx_type)
+    plot_dat$plus_number <- as.numeric(plot_dat$plus_tx_type)
+    plot_dat$plus_first <- plot_dat$plus_number <= plot_dat$minus_number
+    plot_dat$xcat_tx <- NA
+    plot_dat[plot_dat$plus_first, ]$xcat_tx <- paste(as.character(plot_dat[plot_dat$plus_first, ]$plus_tx_type), 
+                                                     as.character(plot_dat[plot_dat$plus_first, ]$minus_tx_type), sep = "__")
+    plot_dat[!plot_dat$plus_first, ]$xcat_tx <- paste(as.character(plot_dat[!plot_dat$plus_first, ]$minus_tx_type), 
+                                                      as.character(plot_dat[!plot_dat$plus_first, ]$plus_tx_type), sep = "__")
+  }
+  else if (pair_type == "gene") {
+    plot_dat[plot_dat$plus_gene_type %in% pseudo_types, ]$plus_gene_type <- "pseudogene"
+    plot_dat[plot_dat$plus_gene_type %in% small_types, ]$plus_gene_type <- "small_RNA"
+    plot_dat[plot_dat$plus_gene_type %in% other_types, ]$plus_gene_type <- "other"
+    plot_dat[plot_dat$minus_gene_type %in% pseudo_types, ]$minus_gene_type <- "pseudogene"
+    plot_dat[plot_dat$minus_gene_type %in% small_types, ]$minus_gene_type <- "small_RNA"
+    plot_dat[plot_dat$minus_gene_type %in% other_types, ]$minus_gene_type <- "other"
+    plot_dat$plus_gene_type <- factor(plot_dat$plus_gene_type, levels = tx_priority, ordered = T)
+    plot_dat$minus_gene_type <- factor(plot_dat$minus_gene_type, levels = tx_priority, ordered = T)
+    plot_dat$minus_number <- as.numeric(plot_dat$minus_gene_type)
+    plot_dat$plus_number <- as.numeric(plot_dat$plus_gene_type)
+    plot_dat$plus_first <- plot_dat$plus_number <= plot_dat$minus_number
+    plot_dat$xcat_gene <- NA
+    plot_dat[plot_dat$plus_first, ]$xcat_gene <- paste(as.character(plot_dat[plot_dat$plus_first, ]$plus_gene_type), 
+                                                       as.character(plot_dat[plot_dat$plus_first, ]$minus_gene_type), sep = "__")
+    plot_dat[!plot_dat$plus_first, ]$xcat_gene <- paste(as.character(plot_dat[!plot_dat$plus_first, ]$minus_gene_type), 
+                                                        as.character(plot_dat[!plot_dat$plus_first, ]$plus_gene_type), sep = "__")
+  }
+  plot_dat
+}
 
 
 ####
@@ -264,16 +310,101 @@ for (i in rownames(cisnat_withCluster)) {
 }
 
 
-####
-## what are the gene types of cisNATs overlapping RNA editing clusters?
-# gene-level
-temp <- paste(cisnat_withCluster$minus_gene_type, cisnat_withCluster$plus_gene_type, sep = "__")
-head(table(temp)[order(table(temp), decreasing = T)], 10L)
-# ^ 389 coding-coding, 115 coding-lncrna, 106 lncrna-coding, 22 lncrna-lncrna, ...etc.
 
-temp <- paste(cisnat_withCluster$minus_tx_type, cisnat_withCluster$plus_tx_type, sep = "__")
-head(table(temp)[order(table(temp), decreasing = T)], 10L)
-# ^ 217 coding-coding, 76 coding-lncrna, 75 lncrna-coding, ...etc.
+####
+## what are the gene types of cisNATs overlapping RNA editing sites?
+# First, define tx types for clearer plotting:
+tx_priority_full <- c("protein_coding", "lncRNA", "processed_transcript", "retained_intron", "nonsense_mediated_decay", 
+                      "non_stop_decay", "pseudogene", "transcribed_processed_pseudogene", "transcribed_unitary_pseudogene", 
+                      "transcribed_unprocessed_pseudogene", "processed_pseudogene", "unitary_pseudogene", 
+                      "polymorphic_pseudogene", "unprocessed_pseudogene", "IG_V_pseudogene", "TR_C_gene",
+                      "scaRNA", "miRNA", "snRNA", "snoRNA", "rRNA_pseudogene", "misc_RNA", "TEC")
+tx_priority <- c("protein_coding", "lncRNA", "processed_transcript", "retained_intron", "nonsense_mediated_decay", 
+                 "non_stop_decay", "pseudogene", "small_RNA", "other")
+## Transcript-level
+nrow(plot_dat <- cisnat_withSites) # 1,083 unique tx pairs
+# get pair types:
+plot_dat <- get_pair_type(df = plot_dat, pair_type = "tx", tx_priority = tx_priority)
+length(unique(plot_dat$xcat_tx)) # 27
+unique(plot_dat$xcat_tx)
+# plot:
+xlab_lev <- names(table(plot_dat$xcat_tx)[order(table(plot_dat$xcat_tx), decreasing = T)])
+plot_dat$xcat_tx <- factor(plot_dat$xcat_tx, levels = xlab_lev)
+labeltable <- as.data.frame(table(plot_dat$xcat_tx))
+colnames(labeltable)[1] <- "xcat_tx"
+g <- ggplot(plot_dat, aes(x = xcat_tx)) + geom_bar() + 
+  geom_text(data = labeltable, aes(y = Freq, label = Freq), vjust = -0.3, size = 3) + 
+  ylab(NULL) + xlab(NULL) + theme_bw() + 
+  ggtitle(paste("Transcript pair types (number of unique overlap regions =", sum(labeltable$Freq), ")")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+ggsave(g, file = file.path(fig_dir, "05_03_overlap_regions_withSites_transcript_types.png"), width = 7, height = 6)
+ggsave(g, file = file.path(fig_dir, "05_03_overlap_regions_withSites_transcript_types.pdf"), width = 7, height = 6)
+
+## Unique gene pairs, gene type
+plot_dat <- cisnat_withSites
+# filter to unique gene pairs (putative_cisnat is unique tx_pairs)
+plot_dat$gene_pair <- paste(plot_dat$minus_gene, plot_dat$plus_gene, sep = "__")
+nrow(plot_dat <- plot_dat[!duplicated(plot_dat$gene_pair), ]) # 486 unique gene pairs
+# get pair types:
+plot_dat <- get_pair_type(df = plot_dat, pair_type = "gene", tx_priority = tx_priority)
+length(unique(plot_dat$xcat_gene)) # 11
+unique(plot_dat$xcat_gene)
+# plot:
+xlab_lev <- names(table(plot_dat$xcat_gene)[order(table(plot_dat$xcat_gene), decreasing = T)])
+plot_dat$xcat_gene <- factor(plot_dat$xcat_gene, levels = xlab_lev)
+labeltable <- as.data.frame(table(plot_dat$xcat_gene))
+colnames(labeltable)[1] <- "xcat_gene"
+g <- ggplot(plot_dat, aes(x = xcat_gene)) + geom_bar() + 
+  geom_text(data = labeltable, aes(y = Freq, label = Freq), vjust = -0.3, size = 3) + 
+  ylab(NULL) + xlab(NULL) + theme_bw() + 
+  ggtitle(paste("Gene pair types (number of unique gene pairs with overlap regions =", sum(labeltable$Freq), ")")) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+ggsave(g, file = file.path(fig_dir, "05_04_overlap_regions_withSites_gene_types.png"), width = 6, height = 6)
+ggsave(g, file = file.path(fig_dir, "05_04_overlap_regions_withSites_gene_types.pdf"), width = 6, height = 6)
+
+
+
+####
+## Plot length of overlaps that include editing sites
+# Overlap length (in plot, partition length by number of editing sites in region)
+cisnat_withSites$n_sites <- unlist(lapply(strsplit(cisnat_withSites$sites, ";"), "length"))
+plot_dat <- cisnat_withSites
+plot_dat$n_sites_cat <- "1"
+plot_dat[plot_dat$n_sites > 1 & plot_dat$n_sites <= 5, ]$n_sites_cat <- "2-5"
+plot_dat[plot_dat$n_sites > 5 & plot_dat$n_sites <= 10, ]$n_sites_cat <- "6-10"
+plot_dat[plot_dat$n_sites > 10 & plot_dat$n_sites <= 25, ]$n_sites_cat <- "11-25"
+plot_dat[plot_dat$n_sites > 25 & plot_dat$n_sites <= 50, ]$n_sites_cat <- "26-50"
+plot_dat[plot_dat$n_sites > 50 & plot_dat$n_sites <= 100, ]$n_sites_cat <- "51-100"
+plot_dat[plot_dat$n_sites > 100, ]$n_sites_cat <- "101+"
+plot_dat$n_sites_cat <- factor(plot_dat$n_sites_cat, levels = rev(c("1", "2-5", "6-10", "11-25", "26-50", "51-100", "101+")))
+plot_dat$bp_range <- "100-200"
+plot_dat[plot_dat$longest_overlap_width > 200 & plot_dat$longest_overlap_width <= 300, ]$bp_range <- "201-300"
+plot_dat[plot_dat$longest_overlap_width > 300 & plot_dat$longest_overlap_width <= 400, ]$bp_range <- "301-400"
+plot_dat[plot_dat$longest_overlap_width > 400 & plot_dat$longest_overlap_width <= 500, ]$bp_range <- "401-500"
+plot_dat[plot_dat$longest_overlap_width > 500 & plot_dat$longest_overlap_width <= 600, ]$bp_range <- "501-600"
+plot_dat[plot_dat$longest_overlap_width > 600 & plot_dat$longest_overlap_width <= 700, ]$bp_range <- "601-700"
+plot_dat[plot_dat$longest_overlap_width > 700 & plot_dat$longest_overlap_width <= 800, ]$bp_range <- "701-800"
+plot_dat[plot_dat$longest_overlap_width > 800 & plot_dat$longest_overlap_width <= 900, ]$bp_range <- "801-900"
+plot_dat[plot_dat$longest_overlap_width > 900 & plot_dat$longest_overlap_width <= 1000, ]$bp_range <- "901-1000"
+plot_dat[plot_dat$longest_overlap_width > 1000 & plot_dat$longest_overlap_width <= 1500, ]$bp_range <- "1001-1500"
+plot_dat[plot_dat$longest_overlap_width > 1500 & plot_dat$longest_overlap_width <= 2000, ]$bp_range <- "1501-2000"
+plot_dat[plot_dat$longest_overlap_width > 2000 & plot_dat$longest_overlap_width <= 2500, ]$bp_range <- "2001-2500"
+plot_dat[plot_dat$longest_overlap_width > 2500 & plot_dat$longest_overlap_width <= 3000, ]$bp_range <- "2501-3000"
+plot_dat[plot_dat$longest_overlap_width > 3000 & plot_dat$longest_overlap_width <= 4000, ]$bp_range <- "3001-4000"
+plot_dat[plot_dat$longest_overlap_width > 4000 & plot_dat$longest_overlap_width <= 5000, ]$bp_range <- "4001-5000"
+plot_dat[plot_dat$longest_overlap_width > 5000 & plot_dat$longest_overlap_width <= 6000, ]$bp_range <- "5001-6000"
+plot_dat[plot_dat$longest_overlap_width > 6000, ]$bp_range <- "6001+"
+plot_dat$bp_range <- factor(plot_dat$bp_range, levels = c("100-200", "201-300", "301-400", "401-500", "501-600",
+                                                          "601-700", "701-800", "801-900", "901-1000", "1001-1500",
+                                                          "1501-2000", "2001-2500", "2501-3000", "3001-4000",
+                                                          "4001-5000", "5001-6000", "6001+"))
+table(plot_dat$bp_range, plot_dat$n_sites_cat)
+g <- ggplot(plot_dat, aes(x = bp_range, fill = n_sites_cat)) + geom_bar() + 
+  theme_bw() + xlab("overlap width") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+ggsave(g, file = file.path(fig_dir, "05_05_number_at_overlapLengthThresholds_withSites.png"), width = 6, height = 5)
+ggsave(g, file = file.path(fig_dir, "05_05_number_at_overlapLengthThresholds_withSites.pdf"), width = 6, height = 5)
+
 
 
 ####

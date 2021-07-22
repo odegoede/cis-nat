@@ -148,9 +148,11 @@ for (i in rownames(cisnat_with_pilotSites)) {
   cisnat_with_pilotSites[i, ]$pilot_sites <- paste(pilot_site_grange[site_ind[put_cisnat_ind == which(names(put_cisnat_grange) == i)]]$site_name, collapse = ";")
 }
 cisnat_with_pilotSites$n_sites <- as.integer(unlist(lapply(strsplit(cisnat_with_pilotSites$pilot_sites, ";"), length)))
+# ^ n_sites is number of pilot sites only
+length(unique(unlist(strsplit(cisnat_with_pilotSites$pilot_sites, ";")))) # 3,569 pilot sites in transcript overlaps
 
 # how many are also in cisnat_withSites?
-summary(rownames(cisnat_with_pilotSites) %in% rownames(cisnat_withSites)) # 76 are shared, 406 of pilot cisnats are not in GTEx (and around 1000 are in GTEx only)
+summary(rownames(cisnat_with_pilotSites) %in% rownames(cisnat_withSites)) # 76 are shared, 408 of pilot cisnats are not in GTEx (and around 1000 are in GTEx only)
 # add this as a column
 cisnat_with_pilotSites$has_site_in_gtexAnalysis <- rownames(cisnat_with_pilotSites) %in% rownames(cisnat_withSites)
 
@@ -186,6 +188,7 @@ for (i in rownames(cisnat_with_strictPilotSites)) {
   cisnat_with_strictPilotSites[i, ]$pilot_sites <- paste(strict_pilot_site_grange[site_ind[put_cisnat_ind == which(names(put_cisnat_grange) == i)]]$site_name, collapse = ";")
 }
 cisnat_with_strictPilotSites$n_sites <- as.integer(unlist(lapply(strsplit(cisnat_with_strictPilotSites$pilot_sites, ";"), length)))
+length(unique(unlist(strsplit(cisnat_with_strictPilotSites$pilot_sites, ";")))) # 215 strict pilot sites in transcript overlaps
 
 # how many are also in cisnat_withSites
 summary(rownames(cisnat_with_strictPilotSites) %in% rownames(cisnat_withSites)) # 18 are shared, 61 of strict pilot cisnats are not in GTEx
@@ -231,11 +234,39 @@ plot_dat$n_site_x_cat <- factor(plot_dat$n_site_x_cat, levels = c("1", "2-5", "6
 table(plot_dat$n_site_x_cat)
 # 1   2-5  6-10 11-20 21-50   51+ 
 #   366   388   349   263   228    52 
-(g <- ggplot(plot_dat, aes(x = n_site_x_cat, fill = found_in)) + geom_bar(position = "stack") + 
-    facet_wrap(~grp, nrow = 3) + ylab("N unique tx_pairs") + theme_bw())
+g <- ggplot(plot_dat, aes(x = n_site_x_cat, fill = found_in)) + geom_bar(position = "stack") + 
+    facet_wrap(~grp, nrow = 3) + ylab("N unique tx_pairs") + theme_bw()
 ggsave(g, file = file.path(fig_dir, "pilot_02_unique_tx_pair_with_edit_sites.png"), height = 9, width = 6)
 ggsave(g, file = file.path(fig_dir, "pilot_02_unique_tx_pair_with_edit_sites.pdf"), height = 9, width = 6)
 
+# no facets:
+plot_dat <- data.frame(tx_pair = c(rownames(cisnat_withSites), rownames(cisnat_with_pilotSites)),
+                       sites = c(cisnat_withSites$sites, cisnat_with_pilotSites$pilot_sites),
+                       grp = c(rep("gtex", nrow(cisnat_withSites)), rep("pilot", nrow(cisnat_with_pilotSites))),
+                       n_sites = c(cisnat_withSites$n_sites, cisnat_with_pilotSites$n_sites),
+                       n_site_x_cat = NA, found_in = NA)
+shared_pairs <- intersect(rownames(cisnat_withSites), rownames(cisnat_with_pilotSites))
+plot_dat[plot_dat$tx_pair %in% shared_pairs, ]$found_in <- "both"
+plot_dat[grepl("pilot", plot_dat$grp) & is.na(plot_dat$found_in), ]$found_in <- "pilot_only"
+plot_dat[plot_dat$grp == "gtex" & is.na(plot_dat$found_in), ]$found_in <- "gtex_only"
+for (i in shared_pairs) {
+  tmp <- paste(unique(unlist(strsplit(plot_dat[plot_dat$tx_pair == i, ]$sites, ";"))), collapse = ";")
+  plot_dat[plot_dat$tx_pair == i, ]$n_sites <- length(unlist(strsplit(tmp, ";")))
+  plot_dat[plot_dat$tx_pair == i, ]$sites <- tmp
+}
+plot_dat <- plot_dat[!(plot_dat$grp == "pilot" & plot_dat$found_in == "both"), ]
+plot_dat[plot_dat$n_sites == 1, ]$n_site_x_cat <- "1"
+plot_dat[plot_dat$n_sites >= 2 & plot_dat$n_sites <= 5, ]$n_site_x_cat <- "2-5"
+plot_dat[plot_dat$n_sites >= 6 & plot_dat$n_sites <= 10, ]$n_site_x_cat <- "6-10"
+plot_dat[plot_dat$n_sites >= 11 & plot_dat$n_sites <= 20, ]$n_site_x_cat <- "11-20"
+plot_dat[plot_dat$n_sites >= 21 & plot_dat$n_sites <= 50, ]$n_site_x_cat <- "21-50"
+plot_dat[plot_dat$n_sites >= 51, ]$n_site_x_cat <- "51+"
+plot_dat$n_site_x_cat <- factor(plot_dat$n_site_x_cat, levels = c("1", "2-5", "6-10", "11-20", "21-50", "51+"))
+g <- ggplot(plot_dat, aes(x = n_site_x_cat, fill = found_in)) + geom_bar(position = "stack") + 
+  ylab("N unique tx_pairs") + xlab("N editing sites") + 
+  scale_fill_manual(values = c("#c84cff", "#ff4c4c", "#4c6cff")) + theme_bw()
+ggsave(g, file = file.path(fig_dir, "pilot_02_unique_tx_pair_with_edit_sites_noFacet.png"), height = 6, width = 7)
+ggsave(g, file = file.path(fig_dir, "pilot_02_unique_tx_pair_with_edit_sites_noFacet.pdf"), height = 6, width = 7)
 
 
 # unique gene_pair level

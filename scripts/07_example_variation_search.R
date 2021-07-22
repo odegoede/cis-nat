@@ -206,7 +206,7 @@ check_low_exp <- function(dsrna, plot_dat, site) {
   g1 <- gene_id_match[gene_id_match$cisnat == unlist(strsplit(dsrna, "__"))[1], ]$gtex[1]
   g2 <- gene_id_match[gene_id_match$cisnat == unlist(strsplit(dsrna, "__"))[2], ]$gtex[1]
   if (is.na(g1) | is.na(g2)) {
-    return("NO_TEST")
+    return("NO_TEST") # if either gene is NA, we can't assess whether editing happens only when there's expression because we don't have expression data
   }
   # make sure that at least one of the genes has SOME zeroes, but isn't ALL zeroes for tpm
   # note which (or both) gene(s) has some zeroes
@@ -411,10 +411,9 @@ tpm_tis <- tpm_dat[,samps]
 ## Filter just to sites that have sufficient coverage and some variation in the tissue
 summary(edit_df_tis$n_cov_tenPlus >= samp_thresh) # 4,015 meet this threshold, 1,589 don't
 cand_edit <- edit_df_tis[edit_df_tis$n_cov_tenPlus >= samp_thresh, ]
-summary(cand_edit$coefVar)
-cand_edit <- cand_edit[which(cand_edit$coefVar > 0), ]
+cand_edit <- cand_edit[which(cand_edit$sd > 0), ] # sd and coefVar were calculated only in samples of that tissue with coverage > 10
 cand_edit <- cand_edit[order(cand_edit$med_edit, decreasing = T), ]
-cand_edit$n_edit_moreThanZero <- cand_edit$n_cov_tenPlus - cand_edit$n_edit_zero
+cand_edit$n_edit_moreThanZero <- cand_edit$n_cov_tenPlus - cand_edit$n_edit_zero # recall that n_edit_zero is the number of samples with n_cov_tenPlus that have an editing level == 0
 
 
 ####
@@ -473,10 +472,10 @@ table(cand_edit$pos_corr_check)
 # NONE__POS      POS__MINI_NEG          POS__NONE           POS__POS 
 # 258                  7                 201                 144
 
-
 # to consider: removing candidate edit sites with big negative correlations (didn't do this time)
 # bigneg was based on looking at all significant corr coefs in this tissue; 
 # threshold is being negative and with coefficient of greater magnitude than 0.1 (top 75%)
+
 
 # test plot a few that passed
 for (i in c(1:3)) {

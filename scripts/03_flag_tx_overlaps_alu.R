@@ -134,7 +134,7 @@ combine_alus <- function(grouped_df, key, alus_df) {
 
 ## This code will get sets of Alus 700 nt apart
 # will run twice: hits with ignore.strand = T that are NOT hits with ignore.strand = F in
-# findOverlaps() are overlaps on opposite strands
+# findOverlaps() are on opposite strands
 
 # give each Alu a unique name, make into granges
 alu_locs$name <- paste(alu_locs$name, c(1:nrow(alu_locs)), sep = "_")
@@ -178,7 +178,7 @@ for (i in c(1:round(length(hit_vals)/n_at_a_time))) {
   }
 }
 
-# combine the alu data with the overlapping probes
+# combine the alu annotation data with the overlaps
 alus_with_overlap <- as.data.frame(alu_gr) %>% dplyr::slice(collapsed_alus$row_number) %>% mutate(adjacent_alus = collapsed_alus$alus)
 # make a simple chr name (some of them have more detailed annotation in seqnames, e.g. "chr22_KI270736v1_random")
 alus_with_overlap$seqnames <- as.character(alus_with_overlap$seqnames)
@@ -214,7 +214,27 @@ summary(is.na(putative_cisnat$alu_overlap)) # 296 contain part of an IRAlu; 15,6
 # (if so, should dive in and check whether the overlap is truly in the exon)
 putative_cisnat[putative_cisnat$multi_exon_overlap,] # all NA, no worries
 
-# save
+
+
+####
+## Also add an "any Alu" flag, with shows if an overlap region contains any Alu sequences at all
+temp <- putative_cisnat
+temp[temp$multi_exon_overlap, ]$longest_overlap_start <- as.numeric(unlist(lapply(strsplit(temp[temp$multi_exon_overlap, ]$longest_overlap_start, ","), min)))
+temp[temp$multi_exon_overlap, ]$longest_overlap_end <- as.numeric(unlist(lapply(strsplit(temp[temp$multi_exon_overlap, ]$longest_overlap_end, ","), max)))
+cisnat_gr <- makeGRangesFromDataFrame(temp, 
+                                      keep.extra.columns = F, seqnames.field = "chr", start.field = "longest_overlap_start",
+                                      end.field = "longest_overlap_end", strand.field = "*")
+cisnat_alu_overlap <- as.data.frame(findOverlaps(cisnat_gr, alu_gr, ignore.strand = T))
+collapsed_overlaps <- group_by(cisnat_alu_overlap, queryHits) %>%
+  group_map(combine_alus, alus_df = alu_locs) %>% purrr::reduce(rbind)
+putative_cisnat$alu_overlap_any <- NA
+putative_cisnat[collapsed_overlaps$row_number, ]$alu_overlap_any <- collapsed_overlaps$alus
+summary(is.na(putative_cisnat$alu_overlap_any)) # 650 contain part of an IRAlu; 15,336 don't
+
+
+
+####
+## save
 save(putative_cisnat, file = file.path(out_dir, "03_putative_cisNAT_uniqueRegionsOnly_withAluFlag.RData"))
 write.table(putative_cisnat, file = file.path(out_dir, "03_putative_cisNAT_uniqueRegionsOnly_withAluFlag.txt"),
             quote = F, sep = "\t", col.names = T, row.names = F)
